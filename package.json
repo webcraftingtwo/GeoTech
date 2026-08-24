@@ -1,0 +1,24 @@
+{
+  "name": "unki-geotech",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Unki GeoTech — underground geological mapping, offset recording and field data management platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:api": "npm run dev -w @geotech/api",
+    "dev:field": "npm run dev -w @geotech/field",
+    "dev:dashboard": "npm run dev -w @geotech/dashboard",
+    "db:up": "docker compose up -d postgres",
+    "db:push": "npm run db:push -w @geotech/api",
+    "db:seed": "npm run db:seed -w @geotech/api"
+  }
+}
