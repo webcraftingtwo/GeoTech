@@ -1,0 +1,231 @@
+/*
+ * Unki GeoTech — geologist dashboard.
+ *
+ * The opposite design problem to the field app. This is read at a desk, on a
+ * large screen, by someone comparing many records at once, so density is a
+ * feature: tables rather than cards, numbers aligned for scanning, and as much
+ * on screen at once as remains legible.
+ *
+ * What carries over unchanged from the field app is the integrity language:
+ * an observed value and an interpreted value never share a cell, and never
+ * share a colour.
+ */
+
+:root {
+  --bg: #0f1216;
+  --panel: #161b22;
+  --panel-2: #1c2230;
+  --line: #2a323e;
+  --text: #e6ebf2;
+  --muted: #8b97a8;
+  --accent: #ffd200;
+  --observed: #5aa9ff;
+  --interpreted: #c792ea;
+  --ok: #3ddc97;
+  --warn: #ffab2e;
+  --danger: #ff5f52;
+
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --panel-2: #eef1f6;
+  --line: #d3dae3;
+  --text: #10151c;
+  --muted: #5b6879;
+  --accent: #9a7400;
+  --observed: #0b62c4;
+  --interpreted: #7038a8;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── shell ──────────────────────────────────────────────────────────── */
+
+.shell { display: grid; grid-template-columns: 240px 1fr; height: 100%; }
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.brand { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 2px; }
+.brand-name { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--text); }
+.nav-item[aria-current='page'] { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+.nav-item .count { margin-left: auto; font-family: var(--mono); font-size: 12px; }
+.nav-item .count[data-tone='danger'] { color: var(--danger); }
+
+.main { overflow-y: auto; padding: 22px 26px 60px; }
+
+.page-title { font-size: 22px; font-weight: 700; margin: 0 0 2px; }
+.page-sub { color: var(--muted); margin: 0 0 20px; }
+
+/* ── stat tiles ─────────────────────────────────────────────────────── */
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.tile[data-tone='danger'] { border-color: var(--danger); }
+.tile[data-tone='warn'] { border-color: var(--warn); }
+.tile .tile-label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+.tile .tile-value { font-family: var(--mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.tile[data-tone='danger'] .tile-value { color: var(--danger); }
+
+/* ── panels and tables ──────────────────────────────────────────────── */
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+.panel-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.panel-title { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+.panel-body { padding: 16px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+td { padding: 9px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+tbody tr:hover { background: var(--panel-2); }
+tr[data-clickable='true'] { cursor: pointer; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+/* ── the integrity language (§13) ───────────────────────────────────── */
+
+.provenance { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .provenance { grid-template-columns: 1fr; } }
+
+.prov-block { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--panel); }
+.prov-block[data-kind='observed'] { border-left: 3px solid var(--observed); }
+.prov-block[data-kind='interpreted'] { border-left: 3px solid var(--interpreted); }
+.prov-kind { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.prov-block[data-kind='observed'] .prov-kind { color: var(--observed); }
+.prov-block[data-kind='interpreted'] .prov-kind { color: var(--interpreted); }
+.prov-value { font-family: var(--mono); font-size: 26px; font-weight: 700; margin: 6px 0 2px; }
+.prov-meta { font-size: 12px; color: var(--muted); }
+
+/* ── controls ───────────────────────────────────────────────────────── */
+
+.btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #11151b; border-color: var(--accent); }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
+
+.input, .select, .textarea {
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  width: 100%;
+}
+.textarea { min-height: 80px; resize: vertical; }
+.label { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
+
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.spacer { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+
+/* ── status pills — always a word, never colour alone (§33) ─────────── */
+
+.pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.pill[data-status='VALIDATED'], .pill[data-status='ACCEPTED'] { color: var(--ok); }
+.pill[data-status='SUBMITTED'], .pill[data-status='UNDER_REVIEW'] { color: var(--warn); }
+.pill[data-status='REJECTED'], .pill[data-status='OPEN'], .pill[data-status='CLARIFICATION_REQUESTED'] { color: var(--danger); }
+.pill[data-status='DRAFT'] { color: var(--muted); }
+.pill[data-confidence='HIGH'] { color: var(--ok); }
+.pill[data-confidence='MEDIUM'] { color: var(--warn); }
+.pill[data-confidence='LOW'] { color: var(--danger); }
+
+/* ── history bars (§23) ─────────────────────────────────────────────── */
+
+.hist-row { display: grid; grid-template-columns: 90px 80px 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+.hist-track { height: 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.hist-fill { height: 100%; background: var(--observed); }
+.hist-fill[data-kind='interpreted'] { background: var(--interpreted); }
+
+/* ── login ──────────────────────────────────────────────────────────── */
+
+.login-wrap { display: grid; place-items: center; height: 100%; }
+.login-card { width: min(420px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 26px; }
+
+.banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 13px;
+}
+.banner[data-tone='ok'] { border-color: var(--ok); color: var(--ok); }
+
+.diagram { width: 100%; max-width: 380px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+
+.empty { padding: 34px; text-align: center; color: var(--muted); }
