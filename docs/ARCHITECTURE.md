@@ -150,7 +150,16 @@ Both are enforced server-side, not merely hidden in the UI.
 
 ## 6. Security (§31)
 
-- Argon2id password hashing; short-lived access JWTs with rotating refresh tokens.
+- **scrypt** password hashing from Node's standard library, parameterised well
+  above the defaults, with the parameters stored alongside each hash so they can
+  be raised later without invalidating existing passwords. scrypt rather than
+  Argon2id purely to avoid a native build dependency in CI and on devices.
+- Short-lived access JWTs with **rotating** refresh tokens: a presented refresh
+  token is retired as its replacement is issued, so a stolen one is usable at
+  most once and the theft is detectable.
+- Refresh tokens are stored hashed, so a database leak does not hand over live
+  sessions. Deactivating an account invalidates its live access tokens on the
+  next request, not at next sign-in.
 - **Offline authentication:** a device holds a sealed, expiring offline session grant
   (default 16 h, configurable to mine IT policy) that permits capture but never
   privileged operations. No password or long-lived secret is stored on the device.

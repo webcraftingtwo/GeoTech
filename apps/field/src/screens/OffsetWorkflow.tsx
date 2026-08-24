@@ -12,6 +12,7 @@ import {
 import { ChipGroup } from '../components/Chips.js';
 import { IssueList } from '../components/Issues.js';
 import { MeasurementField } from '../components/Keypad.js';
+import { OrientationCapture, emptyOrientation } from '../components/Orientation.js';
 import { Header, Screen, Steps } from '../components/Layout.js';
 import { OffsetDiagram } from '../components/OffsetDiagram.js';
 import { PhotoCapture } from '../components/PhotoCapture.js';
@@ -39,9 +40,8 @@ export function OffsetWorkflowScreen({ faceLogLocalId }: { faceLogLocalId: strin
   const [apparentOffset, setApparentOffset] = useState('');
   const [lateralSense, setLateralSense] = useState<string | null>(null);
   const [verticalSense, setVerticalSense] = useState<string | null>(null);
-  const [strike, setStrike] = useState('');
-  const [dip, setDip] = useState('');
-  const [dipDirection, setDipDirection] = useState('');
+  const [orientation, setOrientation] = useState(emptyOrientation);
+  const { strike, dip, dipDirection } = orientation;
   const [measurementMethod, setMeasurementMethod] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<string | null>(null);
   const [structureRef, setStructureRef] = useState('');
@@ -122,7 +122,7 @@ export function OffsetWorkflowScreen({ faceLogLocalId }: { faceLogLocalId: strin
         strike: strike ? Number(strike) : null,
         dip: dip ? Number(dip) : null,
         dipDirection: dipDirection ? Number(dipDirection) : null,
-        measurementSource: strike || dip || dipDirection ? 'MANUAL' : null,
+        measurementSource: orientation.source,
         confidence: (confidence as Structure['confidence']) ?? null,
         structureRef: structureRef ? structureRef.trim().toUpperCase() : null,
         deviceId: session.deviceId,
@@ -146,7 +146,7 @@ export function OffsetWorkflowScreen({ faceLogLocalId }: { faceLogLocalId: strin
         dip: dip ? Number(dip) : null,
         dipDirection: dipDirection ? Number(dipDirection) : null,
         measurementMethod: measurementMethod ?? null,
-        measurementSource: 'MANUAL',
+        measurementSource: orientation.source,
         confidence: (confidence as GeologicalOffset['confidence']) ?? null,
         observedById: session.userId,
         observedAt: now,
@@ -245,9 +245,7 @@ export function OffsetWorkflowScreen({ faceLogLocalId }: { faceLogLocalId: strin
               onChange={setLateralSense}
             />
             <ChipGroup label="How was it measured?" options={methodOptions} value={measurementMethod} onChange={setMeasurementMethod} />
-            <MeasurementField label="Strike" unit="°" value={strike} onChange={setStrike} />
-            <MeasurementField label="Dip" unit="°" value={dip} onChange={setDip} />
-            <MeasurementField label="Dip direction" unit="°" value={dipDirection} onChange={setDipDirection} />
+            <OrientationCapture value={orientation} onChange={setOrientation} />
           </div>
         )}
 

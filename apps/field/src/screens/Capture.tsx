@@ -14,6 +14,7 @@ import {
 import { ChipGroup } from '../components/Chips.js';
 import { IssueList } from '../components/Issues.js';
 import { MeasurementField } from '../components/Keypad.js';
+import { OrientationCapture, emptyOrientation } from '../components/Orientation.js';
 import { Header, Screen } from '../components/Layout.js';
 import { PhotoCapture } from '../components/PhotoCapture.js';
 import { CONFIDENCE_OPTIONS, useOptions } from '../components/refs.js';
@@ -32,9 +33,8 @@ export function ObservationScreen({ faceLogLocalId }: { faceLogLocalId: string }
   const [materialCode, setMaterialCode] = useState<string | null>(null);
   const [contactTypeCode, setContactTypeCode] = useState<string | null>(null);
   const [width, setWidth] = useState('');
-  const [strike, setStrike] = useState('');
-  const [dip, setDip] = useState('');
-  const [dipDirection, setDipDirection] = useState('');
+  const [orientation, setOrientation] = useState(emptyOrientation);
+  const { strike, dip, dipDirection } = orientation;
   const [confidence, setConfidence] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ export function ObservationScreen({ faceLogLocalId }: { faceLogLocalId: string }
     strike: strike ? Number(strike) : null,
     dip: dip ? Number(dip) : null,
     dipDirection: dipDirection ? Number(dipDirection) : null,
-    measurementSource: strike || dip || dipDirection ? 'MANUAL' : null,
+    measurementSource: orientation.source,
     confidence: (confidence as Observation['confidence']) ?? null,
     description: description || null,
   };
@@ -75,7 +75,7 @@ export function ObservationScreen({ faceLogLocalId }: { faceLogLocalId: string }
         strike: strike ? Number(strike) : null,
         dip: dip ? Number(dip) : null,
         dipDirection: dipDirection ? Number(dipDirection) : null,
-        measurementSource: strike || dip || dipDirection ? 'MANUAL' : null,
+        measurementSource: orientation.source,
         confidence: (confidence as Observation['confidence']) ?? null,
         observedById: session.userId,
         observedAt: now,
@@ -101,9 +101,7 @@ export function ObservationScreen({ faceLogLocalId }: { faceLogLocalId: string }
         <ChipGroup label="Material / lithology" options={useOptions('lithology')} value={materialCode} onChange={setMaterialCode} />
         <ChipGroup label="Contact type" options={useOptions('contact_type')} value={contactTypeCode} onChange={setContactTypeCode} />
         <MeasurementField label="Width" unit="m" value={width} onChange={setWidth} />
-        <MeasurementField label="Strike" unit="°" value={strike} onChange={setStrike} />
-        <MeasurementField label="Dip" unit="°" value={dip} onChange={setDip} />
-        <MeasurementField label="Dip direction" unit="°" value={dipDirection} onChange={setDipDirection} />
+        <OrientationCapture value={orientation} onChange={setOrientation} />
         <ChipGroup label="Geological confidence" options={CONFIDENCE_OPTIONS} value={confidence} onChange={setConfidence} />
         <label>
           <span className="label">Notes</span>

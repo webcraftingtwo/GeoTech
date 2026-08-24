@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { api, type FieldNotification } from '../api/client.js';
 import { db } from '../db/database.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { useApp } from '../state/app.js';
@@ -22,6 +24,25 @@ export function HomeScreen() {
   const queued = useLiveQuery(() => db.queue.count(), [], 0);
 
   /**
+   * Notifications (§28). Only things that need the technician to do something
+   * reach this screen — a geologist asking for clarification, a record that
+   * needs correcting. Sync progress is already in the header, and repeating it
+   * here would train people to ignore the one place that matters.
+   *
+   * Fetching fails silently underground; that is not an error worth reporting.
+   */
+  const [notifications, setNotifications] = useState<FieldNotification[]>([]);
+  const loadNotifications = useCallback(() => {
+    api.notifications().then(setNotifications).catch(() => undefined);
+  }, []);
+  useEffect(loadNotifications, [loadNotifications]);
+
+  const dismiss = async (id: string) => {
+    setNotifications((n) => n.filter((x) => x.id !== id));
+    await api.markNotificationRead(id).catch(() => undefined);
+  };
+
+  /**
    * Every observation belongs to a face log. If none is open, start one — but
    * say so, because a screen that silently becomes a different screen is how
    * people lose their place underground.
@@ -39,6 +60,26 @@ export function HomeScreen() {
       <Header title={session?.name ?? 'Technician'} subtitle={shift} />
       <Screen>
         <SyncBar />
+
+        {notifications.map((n) => (
+          <div key={n.id} className="card card-danger stack" style={{ gap: 8 }}>
+            <div>
+              <span className="label">From the geologist</span>
+              <div style={{ fontWeight: 700 }}>{n.title}</div>
+              {n.body && <div className="small muted">{n.body}</div>}
+            </div>
+            <div className="row">
+              {n.entityType === 'FACE_LOG' && n.entityId && (
+                <button className="btn" onClick={() => push({ name: 'myLogs' })}>
+                  Open my logs
+                </button>
+              )}
+              <button className="btn btn-ghost" onClick={() => void dismiss(n.id)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        ))}
 
         {openLog && (
           <button className="card card-accent record-row" onClick={() => push({ name: 'faceLog', localId: openLog.localId })}>
@@ -105,13 +146,13 @@ export function HomeScreen() {
 
         <div className="grid-2">
           <button className="btn" onClick={() => push({ name: 'myLogs' })}>
-            My logs ({mine})
+            My logs ({mine}){drafts > 0 ? ` · ${drafts} draft${drafts === 1 ? '' : 's'}` : ''}
           </button>
           <button className="btn" onClick={() => push({ name: 'pending' })}>
             Sync queue ({queued})
           </button>
-          <button className="btn" onClick={() => push({ name: 'myLogs' })}>
-            Drafts ({drafts})
+          <button className="btn" onClick={() => push({ name: 'search' })}>
+            Search
           </button>
           <button className="btn" onClick={() => push({ name: 'settings' })}>
             Settings

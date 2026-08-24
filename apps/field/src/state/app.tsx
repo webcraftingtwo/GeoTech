@@ -30,6 +30,7 @@ export type Route =
   | { name: 'photo'; faceLogLocalId: string }
   | { name: 'myLogs' }
   | { name: 'pending' }
+  | { name: 'search' }
   | { name: 'settings' };
 
 interface Toast {

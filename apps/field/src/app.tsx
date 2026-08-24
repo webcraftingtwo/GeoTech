@@ -4,7 +4,7 @@ import { LoginScreen } from './screens/Login.js';
 import { NewFaceLogScreen } from './screens/NewFaceLog.js';
 import { OffsetWorkflowScreen } from './screens/OffsetWorkflow.js';
 import { HazardScreen, ObservationScreen, PhotoScreen, SampleScreen } from './screens/Capture.js';
-import { FaceLogScreen, MyLogsScreen, PendingSyncScreen, SettingsScreen } from './screens/Records.js';
+import { FaceLogScreen, MyLogsScreen, PendingSyncScreen, SearchScreen, SettingsScreen } from './screens/Records.js';
 import { useApp } from './state/app.js';
 
 export function App() {
@@ -34,6 +34,7 @@ export function App() {
       {route.name === 'photo' && <PhotoScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'myLogs' && <MyLogsScreen />}
       {route.name === 'pending' && <PendingSyncScreen />}
+      {route.name === 'search' && <SearchScreen />}
       {route.name === 'settings' && <SettingsScreen />}
       <Toast />
     </div>

@@ -97,6 +97,9 @@ export const api = {
 
   reference: () => request<ReferenceBundle>('/sync/reference'),
 
+  notifications: () => request<FieldNotification[]>('/notifications'),
+  markNotificationRead: (id: string) => request<{ ok: true }>(`/notifications/${id}/read`, { method: 'POST' }),
+
   syncBatch: (batch: SyncBatch) =>
     request<SyncBatchResult & { replayed?: boolean }>('/sync/batch', {
       method: 'POST',
@@ -126,6 +129,16 @@ export const api = {
 
   health: () => request<{ status: string }>('/health'.replace('/api/v1', ''), {}, false),
 };
+
+export interface FieldNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  createdAt: string;
+}
 
 export interface ReferenceWorkplace {
   id: string;

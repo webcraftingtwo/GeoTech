@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { scoreRecord, validateFaceLog } from '@geotech/core';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
@@ -340,6 +341,100 @@ export function SettingsScreen() {
           A geological information and data-capture tool. It does not replace mine safety procedures, ground-control
           procedures, survey standards, sampling protocols, formal hazard reporting or competent-person interpretation.
         </p>
+      </Screen>
+    </>
+  );
+}
+
+/* ── on-device search (§6, §27) ───────────────────────────────────────── */
+
+/**
+ * Searches what is on this device, not the server.
+ *
+ * A technician underground asking "did I already log this face?" cannot reach
+ * the server, and the answer they need is about their own records anyway. The
+ * screen says plainly which records it can see, so an empty result is never
+ * mistaken for "no such record exists".
+ */
+export function SearchScreen() {
+  const { pop, push } = useApp();
+  const [query, setQuery] = useState('');
+
+  const term = query.trim().toUpperCase();
+
+  const results = useLiveQuery(async () => {
+    if (term.length < 2) return { logs: [], offsets: [], samples: [] };
+    const [logs, offsets, samples] = await Promise.all([
+      db.faceLogs.toArray(),
+      db.offsets.toArray(),
+      db.samples.toArray(),
+    ]);
+    const matches = (...fields: (string | null | undefined)[]) =>
+      fields.some((f) => f && f.toUpperCase().includes(term));
+    return {
+      logs: logs.filter((l) => matches(l.recordId, l.surveyReference, l.notes, l.shift)),
+      offsets: offsets.filter((o) => matches(o.recordId, o.markerRef, o.markerType, String(o.apparentOffset))),
+      samples: samples.filter((s) => matches(s.sampleNumber, s.containerRef, s.barcode)),
+    };
+  }, [term], { logs: [], offsets: [], samples: [] });
+
+  const total = results.logs.length + results.offsets.length + results.samples.length;
+
+  return (
+    <>
+      <Header title="Search" onBack={pop} />
+      <Screen>
+        <input
+          className="input input-mono"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Record ID, survey peg, sample number"
+          autoCapitalize="characters"
+        />
+        <span className="small muted">
+          Searches records held on this device. Records already synced and cleared from the device are found on the
+          geology dashboard.
+        </span>
+
+        {term.length >= 2 && total === 0 && <div className="card muted">Nothing on this device matches “{query}”.</div>}
+
+        {results.logs.map((log) => (
+          <button key={log.localId} className="record-row" onClick={() => push({ name: 'faceLog', localId: log.localId })}>
+            <div style={{ flex: 1 }}>
+              <div>{log.recordId}</div>
+              <div className="rec-id">{log.surveyReference ?? 'no reference'}</div>
+            </div>
+            <span className="state-badge" data-state={log.syncState}>
+              FACE LOG
+            </span>
+          </button>
+        ))}
+
+        {results.offsets.map((offset) => (
+          <div key={offset.localId} className="record-row">
+            <div style={{ flex: 1 }}>
+              <div className="value">
+                {offset.apparentOffset} {offset.unit.toLowerCase()}
+              </div>
+              <div className="rec-id">{offset.recordId}</div>
+            </div>
+            <span className="state-badge" data-state={offset.syncState}>
+              OFFSET
+            </span>
+          </div>
+        ))}
+
+        {results.samples.map((sample) => (
+          <div key={sample.localId} className="record-row">
+            <div style={{ flex: 1 }}>
+              <div className="value">{sample.sampleNumber}</div>
+              <div className="rec-id">{sample.sampleType}</div>
+            </div>
+            <span className="state-badge" data-state={sample.syncState}>
+              SAMPLE
+            </span>
+          </div>
+        ))}
       </Screen>
     </>
   );
