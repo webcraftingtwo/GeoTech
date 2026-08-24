@@ -1,0 +1,441 @@
+/*
+ * Unki GeoTech — field interface.
+ *
+ * This is designed for a specific place: a working face underground, read
+ * under a cap lamp, operated with gloves on, often one-handed, by someone who
+ * has more urgent things to attend to than an application.
+ *
+ * That produces hard rules, not preferences:
+ *   - Nothing interactive is smaller than 56px. Gloves are imprecise.
+ *   - Dark is the default because the screen is the brightest object in the
+ *     drive and a white field dazzles.
+ *   - Status is never carried by colour alone: every state has a word or a
+ *     glyph beside it (§33). Cap lamps wash out hue, and so does dust.
+ *   - Measurements are monospaced and tabular so digits line up and a
+ *     transposed decimal is visible.
+ */
+
+:root {
+  --bg: #0e1013;
+  --surface: #171b21;
+  --surface-2: #1e242c;
+  --line: #2a323c;
+  --text: #e8ecf1;
+  --muted: #8996a5;
+  --accent: #ffd200;
+  --accent-ink: #0e1013;
+  --danger: #ff4d3d;
+  --warn: #ffab2e;
+  --ok: #3ddc97;
+  --info: #5aa9ff;
+
+  --touch: 56px;
+  --radius: 12px;
+  --gap: 12px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+
+  color-scheme: dark;
+}
+
+/* Surface conditions vary: a lamp room is not a drive. */
+:root[data-theme='light'] {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #eceff3;
+  --line: #ccd4dd;
+  --text: #12171d;
+  --muted: #5a6673;
+  --accent: #a67c00;
+  --accent-ink: #ffffff;
+  color-scheme: light;
+}
+
+/* Maximum legibility for bright light, dusty screens and tired eyes. */
+:root[data-contrast='high'] {
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #141414;
+  --line: #6a6a6a;
+  --text: #ffffff;
+  --muted: #cfcfcf;
+  --accent: #ffe600;
+  --danger: #ff7a6e;
+  --ok: #6bff9f;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* A mis-tap that selects a paragraph wastes time; text selection is
+     re-enabled on the elements that actually need it. */
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior-y: contain;
+}
+
+input, textarea { user-select: text; }
+
+/* ── layout ─────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--gap);
+  padding-bottom: 96px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stack { display: flex; flex-direction: column; gap: var(--gap); }
+.row { display: flex; gap: var(--gap); align-items: center; }
+.row-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+
+/* ── header ─────────────────────────────────────────────────────────── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 10px var(--gap);
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.header-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+.header-name { font-size: 15px; font-weight: 700; }
+
+.back-button {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius);
+  font-size: 22px;
+}
+
+/* ── sync indicator (§5) ────────────────────────────────────────────── */
+
+.sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.sync-bar[data-state='offline'] { border-color: var(--warn); color: var(--warn); }
+.sync-bar[data-state='synced'] { border-color: var(--ok); color: var(--ok); }
+.sync-bar[data-state='attention'] { border-color: var(--danger); color: var(--danger); }
+.sync-bar[data-state='syncing'] { border-color: var(--info); color: var(--info); }
+
+/* ── buttons ────────────────────────────────────────────────────────── */
+
+.btn {
+  min-height: var(--touch);
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  touch-action: manipulation;
+}
+.btn:active { filter: brightness(1.35); }
+.btn:disabled { opacity: 0.35; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 800; }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-ghost { background: transparent; }
+.btn-block { width: 100%; }
+.btn-lg { min-height: 72px; font-size: 18px; }
+
+/* The six primary actions on the home screen (§6). */
+.action-button {
+  min-height: 84px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.action-button:active { filter: brightness(1.35); }
+.action-button .glyph { font-size: 30px; width: 40px; text-align: center; }
+.action-button[data-emphasis='primary'] { border-color: var(--accent); }
+.action-button[data-emphasis='hazard'] { border-color: var(--danger); }
+.action-button .sub { display: block; font-size: 13px; font-weight: 500; color: var(--muted); }
+
+/* ── selection chips: the main input device (§32) ───────────────────── */
+
+.chip {
+  min-height: var(--touch);
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  /* Never colour alone — the selected chip is also marked. */
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.chip[aria-pressed='true']::before { content: '✓ '; color: var(--accent); font-weight: 800; }
+.chip-danger[aria-pressed='true'] { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+
+/* ── cards and sections ─────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.card-accent { border-color: var(--accent); }
+.card-danger { border-color: var(--danger); }
+
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.value-lg { font-family: var(--mono); font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.value { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* ── inputs ─────────────────────────────────────────────────────────── */
+
+.input, .select, .textarea {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+}
+.input:focus, .select:focus, .textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.input-mono { font-family: var(--mono); font-size: 22px; font-variant-numeric: tabular-nums; }
+.textarea { min-height: 110px; resize: vertical; }
+
+/* ── numeric keypad (§32) ───────────────────────────────────────────── */
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.keypad button {
+  height: 62px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.keypad button:active { filter: brightness(1.4); }
+.keypad button.accent { background: var(--accent); color: var(--accent-ink); font-family: var(--font); font-size: 14px; letter-spacing: 0.12em; }
+.keypad button.subtle { color: var(--muted); font-family: var(--font); font-size: 14px; letter-spacing: 0.1em; }
+
+.readout {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 12px 14px;
+  min-height: 74px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.readout[data-active='true'] { border-color: var(--accent); }
+
+/* ── validation messages (§18, §42) ─────────────────────────────────── */
+
+.issue {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.issue[data-severity='ERROR'] { border-color: var(--danger); }
+.issue[data-severity='WARNING'] { border-color: var(--warn); }
+.issue .issue-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.issue[data-severity='ERROR'] .issue-tag { color: var(--danger); }
+.issue[data-severity='WARNING'] .issue-tag { color: var(--warn); }
+
+/* ── data-quality meter (§35) ───────────────────────────────────────── */
+
+.quality { display: flex; align-items: center; gap: 12px; }
+.quality-track { flex: 1; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
+.quality-fill { height: 100%; background: var(--ok); }
+.quality-fill[data-band='ADEQUATE'] { background: var(--warn); }
+.quality-fill[data-band='INCOMPLETE'] { background: var(--danger); }
+.quality-score { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+
+/* ── record rows ────────────────────────────────────────────────────── */
+
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.record-row .rec-id { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+.state-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.state-badge[data-state='SYNCED'] { color: var(--ok); }
+.state-badge[data-state='PENDING_SYNC'], .state-badge[data-state='SYNCING'] { color: var(--info); }
+.state-badge[data-state='DRAFT'], .state-badge[data-state='LOCAL_SAVED'] { color: var(--muted); }
+.state-badge[data-state='SYNC_FAILED'], .state-badge[data-state='REQUIRES_REVIEW'] { color: var(--danger); }
+
+/* ── step progress (§34) ────────────────────────────────────────────── */
+
+.steps { display: flex; gap: 6px; margin-bottom: 4px; }
+.step-dot { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.step-dot[data-state='done'] { background: var(--muted); }
+.step-dot[data-state='current'] { background: var(--accent); }
+
+.step-question { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+
+/* ── bottom action bar ──────────────────────────────────────────────── */
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--gap);
+  padding: var(--gap);
+  padding-bottom: max(var(--gap), env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+}
+
+/* ── photo strip (§8) ───────────────────────────────────────────────── */
+
+.photo-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.photo-thumb {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+/* ── offset diagram (§12) ───────────────────────────────────────────── */
+
+.diagram { width: 100%; height: auto; background: var(--surface-2); border-radius: var(--radius); border: 1px solid var(--line); }
+
+/* ── toast ──────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 88px;
+  z-index: 50;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1.5px solid var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.toast[data-tone='danger'] { border-color: var(--danger); }
+
+/* Underground is no place for decorative motion, and some people are made
+   unwell by it. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

@@ -158,9 +158,12 @@ export function buildOffsetDiagram(input: OffsetGeometryInput): OffsetDiagram {
     { kind: 'STRUCTURE', id: 'structure', x1: 46, y1: 6, x2: 58, y2: 94, label: structure },
     { kind: 'MARKER', id: 'far', side: 'FAR', x1: farStartX, y1: farY, x2: farEndX, y2: farY, label: marker },
     {
+      // Placed in the clear band between the structure and the far marker's
+      // label: at the midpoint of the far segment the value ran off the right
+      // edge, and hard against the structure it sat on the fault trace.
       kind: 'DIMENSION',
       id: 'offset',
-      x: (farStartX + farEndX) / 2,
+      x: farStartX + 8,
       y1: nearY,
       y2: farY,
       label: `${formatNumber(magnitude)} ${unit}`,
