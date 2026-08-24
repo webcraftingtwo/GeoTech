@@ -2,7 +2,7 @@
   "name": "unki-geotech",
   "private": true,
   "version": "0.1.0",
-  "description": "Unki GeoTech — underground geological mapping, offset recording and field data management platform",
+  "description": "Unki GeoTech \u2014 underground geological mapping, offset recording and field data management platform",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -20,5 +20,8 @@
     "db:up": "docker compose up -d postgres",
     "db:push": "npm run db:push -w @geotech/api",
     "db:seed": "npm run db:seed -w @geotech/api"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0"
   }
 }

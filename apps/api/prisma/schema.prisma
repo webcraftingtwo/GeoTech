@@ -1,0 +1,810 @@
+// Unki GeoTech — central geological database.
+//
+// Three rules shape this schema, and every table follows them:
+//
+//   1. Observed values and interpreted values never share a column (§13).
+//   2. Nothing a technician captured is ever overwritten — corrections create
+//      versions, and the audit log has no update or delete path (§20, §21).
+//   3. No mine-specific geological term is an enum. Terminology lives in
+//      ref_lists / ref_items and is referenced by code, so a mine can rename or
+//      retire a term without a migration and without orphaning history (§39).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ── enums: structural only, never geological vocabulary ────────────── */
+
+enum Role {
+  TECHNICIAN
+  GEOLOGIST
+  SENIOR_GEOLOGIST
+  ADMIN
+}
+
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum MeasurementSource {
+  SENSOR
+  MANUAL
+}
+
+enum RecordStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CLARIFICATION_REQUESTED
+  VALIDATED
+  REJECTED
+}
+
+enum ReviewStatus {
+  ACCEPTED
+  CLARIFICATION_REQUESTED
+  REJECTED
+  VALIDATED
+}
+
+enum HazardStatus {
+  OPEN
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  CLOSED
+}
+
+enum SampleStatus {
+  COLLECTED
+  SUBMITTED_TO_LAB
+  RESULTS_RECEIVED
+  CANCELLED
+}
+
+enum EntityType {
+  FACE_LOG
+  OBSERVATION
+  REEF_OBSERVATION
+  STRUCTURE
+  OFFSET
+  SAMPLE
+  HAZARD
+  PHOTO
+}
+
+enum LateralSense {
+  LEFT
+  RIGHT
+}
+
+enum VerticalSense {
+  UP
+  DOWN
+}
+
+enum LocationMethod {
+  SURVEY_STATION
+  TAPE_FROM_PEG
+  GPS
+  ESTIMATED
+}
+
+enum RuleSeverity {
+  ERROR
+  WARNING
+}
+
+enum SyncOperationStatus {
+  APPLIED
+  DUPLICATE
+  CONFLICT
+  REJECTED
+  FAILED
+}
+
+/* ── people, devices, sessions ──────────────────────────────────────── */
+
+model User {
+  id           String   @id @default(uuid())
+  employeeNo   String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(TECHNICIAN)
+  department   String?
+  // Deactivation is a flag, never a delete: a historical observation must keep
+  // a resolvable author for as long as the record exists.
+  active       Boolean  @default(true)
+  mustChangePassword Boolean @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  devices         Device[]
+  refreshTokens   RefreshToken[]
+  faceLogs        FaceLog[]        @relation("FaceLogTechnician")
+  observations    Observation[]
+  offsets         Offset[]         @relation("OffsetObserver")
+  interpretations Interpretation[]
+  reviews         Review[]
+  samples         Sample[]
+  hazards         Hazard[]
+  photos          Photo[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+
+  @@index([role, active])
+  @@map("users")
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  deviceId   String   @unique
+  userId     String
+  label      String?
+  platform   String?
+  appVersion String?
+  lastSeenAt DateTime?
+  createdAt  DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+  syncBatches SyncBatch[]
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  deviceId  String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, revokedAt])
+  @@map("refresh_tokens")
+}
+
+/* ── mine hierarchy ─────────────────────────────────────────────────── */
+
+model Mine {
+  id     String  @id @default(uuid())
+  code   String  @unique
+  name   String
+  active Boolean @default(true)
+
+  levels Level[]
+
+  @@map("mines")
+}
+
+model Level {
+  id     String  @id @default(uuid())
+  mineId String
+  code   String
+  name   String
+  active Boolean @default(true)
+
+  mine     Mine      @relation(fields: [mineId], references: [id])
+  sections Section[]
+
+  @@unique([mineId, code])
+  @@map("levels")
+}
+
+model Section {
+  id      String  @id @default(uuid())
+  levelId String
+  code    String
+  name    String
+  active  Boolean @default(true)
+
+  level      Level       @relation(fields: [levelId], references: [id])
+  workplaces Workplace[]
+
+  @@unique([levelId, code])
+  @@map("sections")
+}
+
+model Workplace {
+  id            String  @id @default(uuid())
+  sectionId     String
+  code          String
+  name          String
+  // Reference code from the `workplace_type` list, not an enum.
+  workplaceType String
+  panel         String?
+  drive         String?
+  stope         String?
+  face          String?
+  active        Boolean @default(true)
+
+  section  Section   @relation(fields: [sectionId], references: [id])
+  faceLogs FaceLog[]
+
+  @@unique([sectionId, code])
+  @@index([active])
+  @@map("workplaces")
+}
+
+/* ── configurable reference data (§38, §39) ─────────────────────────── */
+
+model RefList {
+  id           String  @id @default(uuid())
+  code         String  @unique
+  name         String
+  description  String  @default("")
+  // Lists the mine is expected to replace wholesale before production use.
+  mineSpecific Boolean @default(true)
+
+  items RefItem[]
+
+  @@map("ref_lists")
+}
+
+model RefItem {
+  id        String  @id @default(uuid())
+  listId    String
+  code      String
+  label     String
+  sortOrder Int     @default(0)
+  // Deactivating hides an item from new capture but leaves historical records
+  // readable — a term that was correct in 2024 stays resolvable in 2030.
+  active    Boolean @default(true)
+  meta      Json?
+
+  list RefList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, code])
+  @@index([listId, active, sortOrder])
+  @@map("ref_items")
+}
+
+model ValidationRule {
+  id       String       @id @default(uuid())
+  entity   EntityType
+  field    String
+  ruleType String
+  params   Json?
+  severity RuleSeverity @default(WARNING)
+  message  String?
+  active   Boolean      @default(true)
+
+  @@index([entity, active])
+  @@map("validation_rules")
+}
+
+model MeasurementConventionConfig {
+  id                    String  @id @default(uuid())
+  key                   String  @unique @default("default")
+  dipMin                Float   @default(0)
+  dipMax                Float   @default(90)
+  strikeMin             Float   @default(0)
+  strikeMax             Float   @default(360)
+  dipDirectionMin       Float   @default(0)
+  dipDirectionMax       Float   @default(360)
+  allowNegativeOffset   Boolean @default(false)
+  strikeDipRule         String  @default("RIGHT_HAND")
+  strikeDipToleranceDeg Float   @default(15)
+  defaultUnit           String  @default("M")
+  maxPlausibleWidthM    Float   @default(50)
+  maxPlausibleOffsetM   Float   @default(100)
+  updatedAt             DateTime @updatedAt
+
+  @@map("measurement_conventions")
+}
+
+/// Server-side sequence for human-readable record identifiers,
+/// e.g. UNK-FL-2026-000124.
+model RecordSequence {
+  id      String @id @default(uuid())
+  prefix  String
+  year    Int
+  current Int    @default(0)
+
+  @@unique([prefix, year])
+  @@map("record_sequences")
+}
+
+/* ── capture: face logs ─────────────────────────────────────────────── */
+
+model FaceLog {
+  id       String @id @default(uuid())
+  recordId String @unique
+
+  workplaceId  String
+  technicianId String
+
+  shiftDate DateTime
+  shift     String
+  startTime DateTime?
+  endTime   DateTime?
+
+  // Underground the survey reference is the primary location mechanism;
+  // GPS is not assumed to exist at all (§7).
+  surveyReference  String?
+  chainage         Float?
+  faceAdvance      Float?
+  easting          Float?
+  northing         Float?
+  elevation        Float?
+  coordinateSystem String?
+  locationMethod   LocationMethod?
+  locationConfidence Confidence?
+
+  status      RecordStatus @default(DRAFT)
+  dataQuality Int?
+  notes       String?
+  submittedAt DateTime?
+
+  // Mine-specific fields configured without a migration (§39).
+  extra Json?
+
+  // Sync envelope — localId is the idempotency key at ingest (§30).
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  syncedAt  DateTime?
+
+  workplace        Workplace         @relation(fields: [workplaceId], references: [id])
+  technician       User              @relation("FaceLogTechnician", fields: [technicianId], references: [id])
+  observations     Observation[]
+  reefObservations ReefObservation[]
+  samples          Sample[]
+  hazards          Hazard[]
+  photos           Photo[]
+
+  @@index([workplaceId, shiftDate])
+  @@index([technicianId, shiftDate])
+  @@index([status])
+  @@index([shiftDate])
+  @@map("face_logs")
+}
+
+model Observation {
+  id       String @id @default(uuid())
+  recordId String @unique
+
+  faceLogId String
+
+  /// Reference code from the `observation_type` list.
+  observationType String
+  description     String?
+  materialCode    String?
+  contactTypeCode String?
+  width           Float?
+  persistence     Float?
+  relationToReef  String?
+
+  strike            Float?
+  dip               Float?
+  dipDirection      Float?
+  /// A device-compass reading and a hand-held reading are not interchangeable (§15).
+  measurementSource MeasurementSource?
+
+  confidence Confidence?
+  observedById String
+  observedAt   DateTime
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faceLog    FaceLog     @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+  observedBy User        @relation(fields: [observedById], references: [id])
+  structures Structure[]
+  hazards    Hazard[]
+  photos     Photo[]
+
+  @@index([faceLogId])
+  @@index([observationType])
+  @@map("observations")
+}
+
+model ReefObservation {
+  id        String @id @default(uuid())
+  faceLogId String
+
+  reefNameCode          String?
+  reefPosition          String?
+  reefWidth             Float?
+  hwLithologyCode       String?
+  fwLithologyCode       String?
+  contactQualityCode    String?
+  chromititeNotes       String?
+  internalPartings      String?
+  wasteInclusions       String?
+  visibleMineralisation String?
+  confidence            Confidence?
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faceLog FaceLog @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+
+  @@index([faceLogId])
+  @@index([reefNameCode])
+  @@map("reef_observations")
+}
+
+model Structure {
+  id            String @id @default(uuid())
+  recordId      String @unique
+  observationId String
+
+  /// Reference code from the `structure_type` list.
+  structureType String
+
+  strike       Float?
+  dip          Float?
+  dipDirection Float?
+  width        Float?
+  persistence  Float?
+  spacing      Float?
+  aperture     Float?
+
+  conditionCode   String?
+  infillCode      String?
+  intensity       String?
+  compositionCode String?
+  relationToReef  String?
+
+  measurementSource MeasurementSource?
+  sensorAccuracy    Float?
+  confidence        Confidence?
+
+  /// Stable identifier when the same structure is correlated across faces,
+  /// e.g. F-012 — this is what makes structure history possible (§23).
+  structureRef String?
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+  offsets     Offset[]
+
+  @@index([observationId])
+  @@index([structureType])
+  @@index([structureRef])
+  @@map("structures")
+}
+
+/// Geological offset — the module the product exists for (§12).
+///
+/// The observed block is written once by the technician and is immutable after
+/// submission. The interpreted block is maintained by geologists and is a cache
+/// of the newest matching row in `interpretations`. Both persist, forever (§13).
+model Offset {
+  id          String @id @default(uuid())
+  recordId    String @unique
+  structureId String
+
+  // ── OBSERVED (technician) ──
+  markerType     String
+  markerRef      String?
+  apparentOffset Float
+  unit           String        @default("M")
+  offsetDirection String?
+  lateralSense   LateralSense?
+  verticalSense  VerticalSense?
+  strike         Float?
+  dip            Float?
+  dipDirection   Float?
+  throwObserved  Float?
+  heaveObserved  Float?
+  measurementMethod String?
+  measurementSource MeasurementSource?
+  confidence     Confidence?
+  observedById   String
+  observedAt     DateTime
+
+  // ── INTERPRETED (geologist) — never replaces the values above ──
+  interpretedThrow         Float?
+  interpretedHeave         Float?
+  interpretedById          String?
+  interpretationConfidence Confidence?
+  interpretedAt            DateTime?
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  structure  Structure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  observedBy User      @relation("OffsetObserver", fields: [observedById], references: [id])
+  photos     Photo[]
+
+  @@index([structureId])
+  @@index([observedAt])
+  @@map("offsets")
+}
+
+model Photo {
+  id String @id @default(uuid())
+
+  faceLogId     String
+  observationId String?
+  offsetId      String?
+
+  storageKey   String?
+  thumbnailKey String?
+  mimeType     String  @default("image/jpeg")
+  bytes        Int?
+  width        Int?
+  height       Int?
+  /// Duplicate detection and integrity proof for the original image.
+  sha256       String?
+  caption      String?
+
+  /// Digital face-mapping vector layer. Kept separate so the original
+  /// photograph is never altered (§9).
+  annotations Json?
+  metadata    Json?
+
+  capturedAt   DateTime
+  capturedById String
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  uploadedAt DateTime?
+
+  faceLog     FaceLog      @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+  observation Observation? @relation(fields: [observationId], references: [id], onDelete: SetNull)
+  offset      Offset?      @relation(fields: [offsetId], references: [id], onDelete: SetNull)
+  capturedBy  User         @relation(fields: [capturedById], references: [id])
+
+  @@index([faceLogId])
+  @@index([observationId])
+  @@index([sha256])
+  @@map("photos")
+}
+
+model Sample {
+  id        String @id @default(uuid())
+  faceLogId String
+
+  /// Globally unique — enforced here as well as on the device, so a duplicate
+  /// is caught underground rather than at sync (§16).
+  sampleNumber String @unique
+
+  sampleType         String
+  materialCode       String?
+  fromPosition       Float?
+  toPosition         Float?
+  length             Float?
+  reefClassification String?
+  containerRef       String?
+  barcode            String?
+  status             SampleStatus @default(COLLECTED)
+
+  collectedAt   DateTime
+  collectedById String
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faceLog     FaceLog @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+  collectedBy User    @relation(fields: [collectedById], references: [id])
+
+  @@index([faceLogId])
+  @@index([status])
+  @@map("samples")
+}
+
+model Hazard {
+  id       String @id @default(uuid())
+  recordId String @unique
+
+  faceLogId     String
+  observationId String?
+
+  hazardType     String
+  severity       String
+  description    String
+  action         String?
+  notifiedPerson String?
+  status         HazardStatus @default(OPEN)
+
+  raisedById String
+  raisedAt   DateTime
+  closedAt   DateTime?
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faceLog     FaceLog      @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+  observation Observation? @relation(fields: [observationId], references: [id], onDelete: SetNull)
+  raisedBy    User         @relation(fields: [raisedById], references: [id])
+
+  @@index([status, severity])
+  @@index([faceLogId])
+  @@map("hazards")
+}
+
+/* ── interpretation, review, versioning, audit ──────────────────────── */
+
+/// Append-only. Superseding an interpretation links the rows rather than
+/// deleting the old one, so the reasoning history stays readable (§13).
+model Interpretation {
+  id         String     @id @default(uuid())
+  entityType EntityType
+  entityId   String
+  field      String
+  value      Json
+  confidence Confidence
+  comment    String?
+
+  interpretedById String
+  interpretedAt   DateTime @default(now())
+  supersededById  String?
+
+  interpretedBy User @relation(fields: [interpretedById], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([interpretedById])
+  @@map("interpretations")
+}
+
+model Review {
+  id         String       @id @default(uuid())
+  entityType EntityType
+  entityId   String
+  reviewerId String
+  status     ReviewStatus
+  comment    String?
+  reviewedAt DateTime     @default(now())
+
+  reviewer User @relation(fields: [reviewerId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([reviewerId, reviewedAt])
+  @@map("reviews")
+}
+
+/// Full snapshot per version of any record. Restores "what did this look like
+/// when the geologist accepted it" without event-sourcing the whole system (§20).
+model RecordVersion {
+  id          String     @id @default(uuid())
+  entityType  EntityType
+  entityId    String
+  version     Int
+  snapshot    Json
+  reason      String?
+  createdById String?
+  createdAt   DateTime   @default(now())
+
+  @@unique([entityType, entityId, version])
+  @@index([entityType, entityId])
+  @@map("record_versions")
+}
+
+/// Append-only (§21). No update or delete route exists at any role, including
+/// ADMIN — see packages/core/src/permissions.ts.
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  entity      String
+  entityId    String
+  action      String
+  oldValue    Json?
+  newValue    Json?
+  deviceId    String?
+  syncBatchId String?
+  ipAddress   String?
+  timestamp   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId, timestamp])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+/* ── synchronisation (§30) ──────────────────────────────────────────── */
+
+model SyncBatch {
+  batchId    String   @id
+  deviceId   String
+  userId     String?
+  sentAt     DateTime
+  receivedAt DateTime @default(now())
+  opCount    Int      @default(0)
+  appliedCount   Int  @default(0)
+  duplicateCount Int  @default(0)
+  conflictCount  Int  @default(0)
+  failedCount    Int  @default(0)
+
+  device     Device          @relation(fields: [deviceId], references: [deviceId])
+  operations SyncOperation[]
+
+  @@index([deviceId, receivedAt])
+  @@map("sync_batches")
+}
+
+model SyncOperation {
+  id      String @id @default(uuid())
+  batchId String
+
+  localId       String
+  entityType    EntityType
+  op            String
+  clientVersion Int
+  baseVersion   Int?
+  status        SyncOperationStatus
+  serverId      String?
+  message       String?
+  /// Both versions preserved verbatim. Conflicts are never resolved
+  /// automatically — geological observations are not last-write-wins.
+  conflict      Json?
+  processedAt   DateTime @default(now())
+
+  batch SyncBatch @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([localId])
+  @@index([status])
+  @@map("sync_operations")
+}
+
+/* ── notifications (§28) ────────────────────────────────────────────── */
+
+model Notification {
+  id       String   @id @default(uuid())
+  userId   String
+  kind     String
+  title    String
+  body     String?
+  entityType EntityType?
+  entityId String?
+  readAt   DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}

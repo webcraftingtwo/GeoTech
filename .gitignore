@@ -12,3 +12,4 @@ coverage/
 storage/
 *.tsbuildinfo
 apps/api/prisma/dev.db*
+apps/api/.test-storage/
