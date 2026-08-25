@@ -30,7 +30,9 @@
   --info: #5aa9ff;
 
   --touch: 56px;
-  --radius: 12px;
+  /* Tight radii read as instrument, not consumer app. Enough to soften a
+     corner under a gloved thumb, not enough to look like a toy. */
+  --radius: 6px;
   --gap: 12px;
 
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -148,8 +150,8 @@ input, textarea { user-select: text; }
 .sync-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 9px;
+  padding: 9px 12px;
   border-radius: var(--radius);
   font-size: 13px;
   font-weight: 700;
@@ -182,6 +184,7 @@ input, textarea { user-select: text; }
   touch-action: manipulation;
 }
 .btn:active { filter: brightness(1.35); }
+.btn svg, .action-button svg, .sync-bar svg { flex: none; }
 .btn:disabled { opacity: 0.35; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 800; }
 .btn-danger { border-color: var(--danger); color: var(--danger); }
@@ -208,7 +211,16 @@ input, textarea { user-select: text; }
   cursor: pointer;
 }
 .action-button:active { filter: brightness(1.35); }
-.action-button .glyph { font-size: 30px; width: 40px; text-align: center; }
+.action-button .glyph {
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  flex: none;
+}
+.action-button[data-emphasis='primary'] .glyph { color: var(--accent); }
+.action-button[data-emphasis='hazard'] .glyph { color: var(--danger); }
 .action-button[data-emphasis='primary'] { border-color: var(--accent); }
 .action-button[data-emphasis='hazard'] { border-color: var(--danger); }
 .action-button .sub { display: block; font-size: 13px; font-weight: 500; color: var(--muted); }
@@ -317,7 +329,7 @@ input, textarea { user-select: text; }
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 14px;
   line-height: 1.4;
   border: 1px solid var(--line);
@@ -405,7 +417,7 @@ input, textarea { user-select: text; }
   position: relative;
   width: 96px;
   height: 96px;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid var(--line);
   object-fit: cover;
   flex-shrink: 0;

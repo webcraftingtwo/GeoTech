@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { describeSyncStatus } from '@geotech/core';
 import { db } from '../db/database.js';
+import { IconAttention, IconBack, IconOffline, IconSynced, IconSyncing } from './Icons.js';
 import { useApp } from '../state/app.js';
 
 export function Header({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack?: () => void }) {
@@ -10,7 +11,7 @@ export function Header({ title, subtitle, onBack }: { title: string; subtitle?: 
       <div className="row">
         {onBack && (
           <button className="back-button" onClick={onBack} aria-label="Back">
-            ←
+            <IconBack />
           </button>
         )}
         <div>
@@ -53,7 +54,9 @@ export function SyncBar() {
           syncing: sync.running ? outstanding : 0,
         });
 
-  const glyph = state === 'attention' ? '!' : state === 'offline' ? '⚡' : state === 'synced' ? '✓' : '↻';
+  // Each state has its own shape, not only its own colour (§33).
+  const Mark =
+    state === 'attention' ? IconAttention : state === 'offline' ? IconOffline : state === 'synced' ? IconSynced : IconSyncing;
 
   return (
     <button
@@ -62,7 +65,7 @@ export function SyncBar() {
       onClick={() => sync.lastMessage && showToast(sync.lastMessage)}
       style={{ width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit', fontWeight: 700 }}
     >
-      <span aria-hidden>{glyph}</span>
+      <Mark size={17} />
       <span>{text}</span>
     </button>
   );

@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { api, type FieldNotification } from '../api/client.js';
 import { db } from '../db/database.js';
+import {
+  IconFaceLog,
+  IconHazard,
+  IconObservation,
+  IconOffset,
+  IconPhoto,
+  IconSample,
+} from '../components/Icons.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { useApp } from '../state/app.js';
 
@@ -96,7 +104,7 @@ export function HomeScreen() {
 
         <div className="stack">
           <button className="action-button" data-emphasis="primary" onClick={() => push({ name: 'newFaceLog' })}>
-            <span className="glyph" aria-hidden>＋</span>
+            <span className="glyph"><IconFaceLog size={30} /></span>
             <span>
               NEW FACE LOG
               <span className="sub">Start a log at this working place</span>
@@ -104,7 +112,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'offset', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>📐</span>
+            <span className="glyph"><IconOffset size={30} /></span>
             <span>
               RECORD OFFSET
               <span className="sub">Displacement across a structure</span>
@@ -112,7 +120,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'observation', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>🪨</span>
+            <span className="glyph"><IconObservation size={30} /></span>
             <span>
               GEOLOGICAL OBSERVATION
               <span className="sub">Reef, contact, structure, ground</span>
@@ -120,7 +128,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'photo', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>📸</span>
+            <span className="glyph"><IconPhoto size={30} /></span>
             <span>
               FACE PHOTO
               <span className="sub">Photograph the face</span>
@@ -128,7 +136,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'sample', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>🧪</span>
+            <span className="glyph"><IconSample size={30} /></span>
             <span>
               SAMPLE
               <span className="sub">Record a sample and its position</span>
@@ -136,7 +144,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" data-emphasis="hazard" onClick={() => requireLog((id) => push({ name: 'hazard', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>⚠</span>
+            <span className="glyph"><IconHazard size={30} /></span>
             <span>
               GEOLOGICAL HAZARD
               <span className="sub">Also report through the normal procedure</span>

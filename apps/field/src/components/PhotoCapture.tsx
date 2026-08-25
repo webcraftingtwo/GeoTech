@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { newLocalId, type Photo } from '@geotech/core';
 import { db } from '../db/database.js';
+import { IconClose, IconPhoto } from './Icons.js';
 
 /**
  * Face photography (§8).
@@ -114,7 +115,7 @@ export function PhotoCapture({
         onChange={(e) => void capture(e.target.files)}
       />
       <button type="button" className="btn btn-block btn-lg" onClick={() => inputRef.current?.click()} disabled={busy}>
-        📸 {busy ? 'Saving…' : photos.length > 0 ? 'Take another photograph' : 'Take photograph'}
+        <IconPhoto size={22} /> {busy ? 'Saving…' : photos.length > 0 ? 'Take another photograph' : 'Take photograph'}
       </button>
 
       {photos.length > 0 && (
@@ -129,7 +130,7 @@ export function PhotoCapture({
                 style={{ position: 'absolute', top: 4, right: 4, minHeight: 32, minWidth: 32, padding: 0, fontSize: 14 }}
                 aria-label="Delete photograph"
               >
-                ✕
+                <IconClose size={15} />
               </button>
             </div>
           ))}

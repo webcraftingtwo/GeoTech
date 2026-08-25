@@ -11,7 +11,7 @@ measured against one question: **how many taps from "standing at the face" to
 Target: **under 90 seconds**, gloves on, one hand.
 
 ```
-HOME  ──tap──>  📐 RECORD OFFSET
+HOME  ──tap──>  RECORD OFFSET
    │
    1. WHERE      workplace pre-filled from the active face log
    │             (or last used) · confirm or change          [1 tap]
@@ -23,7 +23,7 @@ HOME  ──tap──>  📐 RECORD OFFSET
    │
    4. MEASURE    apparent offset      → numeric keypad
    │             direction / sense    → L|R and U|D chips
-   │             strike / dip / dip-dir → keypad or 📱 sensor
+   │             strike / dip / dip-dir → keypad or device sensor
    │             throw / heave        → optional
    │
    5. CONFIDENCE HIGH · MEDIUM · LOW                         [1 tap]

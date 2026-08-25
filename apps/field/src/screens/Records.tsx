@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { scoreRecord, validateFaceLog } from '@geotech/core';
+import { IconHazard, IconObservation, IconOffset, IconPhoto, IconSample } from '../components/Icons.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { QualityMeter } from '../components/Quality.js';
 import { db } from '../db/database.js';
@@ -80,12 +81,20 @@ export function FaceLogScreen({ localId }: { localId: string }) {
 
         {editable && (
           <div className="grid-2">
-            <button className="btn" onClick={() => push({ name: 'offset', faceLogLocalId: localId })}>📐 Offset</button>
-            <button className="btn" onClick={() => push({ name: 'observation', faceLogLocalId: localId })}>🪨 Observation</button>
-            <button className="btn" onClick={() => push({ name: 'photo', faceLogLocalId: localId })}>📸 Photo</button>
-            <button className="btn" onClick={() => push({ name: 'sample', faceLogLocalId: localId })}>🧪 Sample</button>
+            <button className="btn" onClick={() => push({ name: 'offset', faceLogLocalId: localId })}>
+              <IconOffset size={20} /> Offset
+            </button>
+            <button className="btn" onClick={() => push({ name: 'observation', faceLogLocalId: localId })}>
+              <IconObservation size={20} /> Observation
+            </button>
+            <button className="btn" onClick={() => push({ name: 'photo', faceLogLocalId: localId })}>
+              <IconPhoto size={20} /> Photo
+            </button>
+            <button className="btn" onClick={() => push({ name: 'sample', faceLogLocalId: localId })}>
+              <IconSample size={20} /> Sample
+            </button>
             <button className="btn btn-danger" style={{ gridColumn: '1 / -1' }} onClick={() => push({ name: 'hazard', faceLogLocalId: localId })}>
-              ⚠ Hazard
+              <IconHazard size={20} /> Hazard
             </button>
           </div>
         )}
