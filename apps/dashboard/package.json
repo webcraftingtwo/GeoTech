@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:standalone": "VITE_DEPLOYMENT=standalone vite build --outDir dist-standalone --emptyOutDir"
   },
   "dependencies": {
     "@geotech/core": "*",
@@ -19,6 +20,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^6.1.0",
     "typescript": "^5.6.3",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

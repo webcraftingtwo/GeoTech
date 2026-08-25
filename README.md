@@ -52,8 +52,23 @@ into a real deployment.
 Without Docker, any local PostgreSQL 16 works — point `DATABASE_URL` at it and
 run `npm run db:push`.
 
+### Standalone build — two files, no server
+
 ```bash
-npm test         # 115 tests; the API suite needs a database (see docs/TESTING.md)
+npm run build:standalone
+# apps/field/dist-standalone/index.html      technician application
+# apps/dashboard/dist-standalone/index.html  geologist application
+```
+
+Self-contained HTML that runs with no API and no database: the technician
+captures a shift on the device and exports a hand-over file; the geologist
+opens it, reviews and interprets. Suitable for a pilot or a site with no
+network — **not** for a permanent geological record, because without a server
+there is no verified sign-in, no enforced roles and no central audit trail.
+The trade-offs are set out in full in [`docs/STANDALONE.md`](docs/STANDALONE.md).
+
+```bash
+npm test         # 130 tests; the API suite needs a database (see docs/TESTING.md)
 npm run build    # build all workspaces
 npm run typecheck
 ```
@@ -75,6 +90,7 @@ npm run preview -w @geotech/field   # http://localhost:4173
 5. **Append, never overwrite.** Corrections create versions; the audit log has no delete route.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design,
+[`docs/STANDALONE.md`](docs/STANDALONE.md) for the server-free deployment,
 [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) for the schema rationale,
 [`docs/USER-FLOWS.md`](docs/USER-FLOWS.md) for the workflows, and
 [`docs/TESTING.md`](docs/TESTING.md) for what is and is not tested.

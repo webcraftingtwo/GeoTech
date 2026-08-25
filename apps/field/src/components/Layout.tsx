@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { describeSyncStatus } from '@geotech/core';
 import { db } from '../db/database.js';
+import { IS_STANDALONE } from '../deployment.js';
 import { IconAttention, IconBack, IconOffline, IconSynced, IconSyncing } from './Icons.js';
 import { useApp } from '../state/app.js';
 
@@ -30,6 +31,42 @@ export function Header({ title, subtitle, onBack }: { title: string; subtitle?: 
  * asks the technician to do anything — synchronising is the application's job.
  */
 export function SyncBar() {
+  if (IS_STANDALONE) return <HandoverBar />;
+  return <NetworkedSyncBar />;
+}
+
+/**
+ * Standalone deployment: there is nothing to synchronise with, so the bar
+ * reports what is waiting to be handed over instead. It never says "synced",
+ * because nothing has been — that would be the one misleading word available.
+ */
+function HandoverBar() {
+  const { push } = useApp();
+  const held = useLiveQuery(
+    async () => {
+      const { countOutstanding } = await import('../db/handover.js');
+      return countOutstanding();
+    },
+    [],
+    0,
+  );
+
+  const state = held > 0 ? 'syncing' : 'synced';
+  const Mark = held > 0 ? IconSyncing : IconSynced;
+
+  return (
+    <button className="sync-bar" data-state={state} onClick={() => push({ name: 'pending' })}>
+      <Mark size={17} />
+      <span>
+        {held > 0
+          ? `${held} record${held === 1 ? '' : 's'} to hand over`
+          : 'All records handed over'}
+      </span>
+    </button>
+  );
+}
+
+function NetworkedSyncBar() {
   const { sync, showToast } = useApp();
 
   // Counted straight from the queue rather than from the engine's last poll:

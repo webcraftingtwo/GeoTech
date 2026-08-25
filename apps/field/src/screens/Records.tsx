@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { scoreRecord, validateFaceLog } from '@geotech/core';
 import { IconHazard, IconObservation, IconOffset, IconPhoto, IconSample } from '../components/Icons.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { QualityMeter } from '../components/Quality.js';
 import { db } from '../db/database.js';
+import {
+  buildShiftExport,
+  collectOutstanding,
+  downloadFile,
+  exportPhotographs,
+  markHandedOver,
+} from '../db/handover.js';
 import { loadFaceLogPackage, submitFaceLog } from '../db/repository.js';
+import { IS_STANDALONE } from '../deployment.js';
 import { syncEngine } from '../sync/engine.js';
 import { useApp } from '../state/app.js';
 
@@ -277,7 +285,9 @@ export function PendingSyncScreen() {
 /* ── settings ─────────────────────────────────────────────────────────── */
 
 export function SettingsScreen() {
-  const { session, theme, contrast, setTheme, setContrast, reference, refreshReference, signOut, showToast, pop } = useApp();
+  const { session, theme, contrast, setTheme, setContrast, reference, refreshReference, signOut, showToast, pop, storage } =
+    useApp();
+  const referenceInput = useRef<HTMLInputElement>(null);
 
   return (
     <>
@@ -291,6 +301,20 @@ export function SettingsScreen() {
               {session?.employeeNo} · {session?.role.replace('_', ' ').toLowerCase()}
             </div>
           </div>
+          <div>
+            <span className="label">Deployment</span>
+            <div className="small">
+              {IS_STANDALONE
+                ? 'Standalone — this device only, no server'
+                : 'Networked — synchronises to the geology database'}
+            </div>
+          </div>
+          {storage?.usable && !storage.persisted && (
+            <div className="small muted">
+              The browser has not granted persistent storage. Records are kept, but a device very low on space could
+              evict them — hand over each shift rather than accumulating several.
+            </div>
+          )}
           {session?.offlineGrantExpiresAt && (
             <div className="small muted">
               Offline capture allowed until {new Date(session.offlineGrantExpiresAt).toLocaleString()}. Sign in on
@@ -316,21 +340,56 @@ export function SettingsScreen() {
           <div className="small muted">
             {reference.fetchedAt
               ? `Last updated ${new Date(reference.fetchedAt).toLocaleString()} · ${reference.workplaces.length} workplaces`
-              : 'Not yet downloaded — connect once on surface.'}
+              : IS_STANDALONE
+                ? 'Using the built-in example data.'
+                : 'Not yet downloaded — connect once on surface.'}
           </div>
-          <button
-            className="btn"
-            onClick={async () => {
-              try {
-                await refreshReference();
-                showToast('Reference data updated.');
-              } catch {
-                showToast('No connection. The cached reference data is still in use.', 'danger');
-              }
-            }}
-          >
-            Update now
-          </button>
+
+          {IS_STANDALONE ? (
+            <>
+              <input
+                ref={referenceInput}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const { importReference } = await import('../standalone.js');
+                    const result = await importReference(JSON.parse(await file.text()));
+                    showToast(result.message, result.ok ? 'normal' : 'danger');
+                    if (result.ok) window.location.reload();
+                  } catch {
+                    showToast('That file could not be read as reference data.', 'danger');
+                  } finally {
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <button className="btn" onClick={() => referenceInput.current?.click()}>
+                Load the mine's reference file
+              </button>
+              <div className="small muted">
+                The built-in geological terms and workplaces are neutral examples, not Unki terminology. Load the
+                mine-approved file before this device is used for real work.
+              </div>
+            </>
+          ) : (
+            <button
+              className="btn"
+              onClick={async () => {
+                try {
+                  await refreshReference();
+                  showToast('Reference data updated.');
+                } catch {
+                  showToast('No connection. The cached reference data is still in use.', 'danger');
+                }
+              }}
+            >
+              Update now
+            </button>
+          )}
         </div>
 
         <button
@@ -444,6 +503,112 @@ export function SearchScreen() {
             </span>
           </div>
         ))}
+      </Screen>
+    </>
+  );
+}
+
+/* ── shift hand-over (standalone deployment) ──────────────────────────── */
+
+/**
+ * Exporting a shift when there is no server.
+ *
+ * The same promise as synchronisation governs this screen: records are not
+ * marked as handed over until the file has actually been written. If the
+ * export fails, or the technician cancels the save, everything stays on the
+ * device exactly as it was.
+ */
+export function HandoverScreen() {
+  const { session, pop, showToast } = useApp();
+  const [held, setHeld] = useState<number | null>(null);
+  const [photos, setPhotos] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [lastExport, setLastExport] = useState<{ filename: string; checksum: string; count: number } | null>(null);
+
+  const refresh = useCallback(async () => {
+    const records = await collectOutstanding();
+    setHeld(Object.values(records).reduce((total, list) => total + list.length, 0));
+    setPhotos(records.photos.length);
+  }, []);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const exportShift = async () => {
+    if (!session) return;
+    setBusy(true);
+    try {
+      const records = await collectOutstanding();
+      const result = await buildShiftExport(session);
+      downloadFile(result.filename, result.json);
+
+      // Only now, with the file written, are the records marked as handed over.
+      await markHandedOver(records);
+      setLastExport({
+        filename: result.filename,
+        checksum: result.checksum,
+        count: Object.values(result.counts).reduce((a, b) => a + b, 0),
+      });
+      showToast('Shift file saved. The records stay on this device as well.');
+      await refresh();
+    } catch (err) {
+      showToast(`Export failed: ${(err as Error).message} Nothing has been marked as handed over.`, 'danger');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Header title="Hand over shift" onBack={pop} />
+      <Screen>
+        <div className="card stack">
+          <span className="label">Held on this device</span>
+          <div className="value-lg">{held ?? '—'}</div>
+          <div className="small muted">
+            {held === 0
+              ? 'Everything captured on this device has been handed over.'
+              : 'Records captured but not yet given to the geologist.'}
+          </div>
+        </div>
+
+        <button className="btn btn-primary btn-block btn-lg" onClick={() => void exportShift()} disabled={busy || held === 0}>
+          {busy ? 'Writing file…' : 'EXPORT SHIFT FILE'}
+        </button>
+
+        {photos > 0 && (
+          <button
+            className="btn btn-block"
+            onClick={async () => {
+              const written = await exportPhotographs();
+              showToast(`${written} photograph${written === 1 ? '' : 's'} saved.`);
+            }}
+          >
+            Export {photos} photograph{photos === 1 ? '' : 's'} separately
+          </button>
+        )}
+
+        {lastExport && (
+          <div className="card stack" style={{ gap: 8 }}>
+            <span className="label">Last export</span>
+            <div className="small">{lastExport.filename}</div>
+            <div className="small muted">{lastExport.count} records</div>
+            <span className="label" style={{ marginTop: 4 }}>Checksum</span>
+            <div className="small muted" style={{ wordBreak: 'break-all', fontFamily: 'var(--mono)' }}>
+              {lastExport.checksum}
+            </div>
+            <div className="small muted">
+              The geologist's dashboard checks this when the file is opened. A file that fails the check has been
+              damaged in transfer and should be exported again.
+            </div>
+          </div>
+        )}
+
+        <div className="card small muted">
+          <strong style={{ color: 'var(--text)' }}>Nothing is deleted by exporting.</strong> The records stay on this
+          device after the file is written, so a lost file is never a lost observation. Hand the file to the geologist
+          by whatever means the mine already uses for shift paperwork.
+        </div>
       </Screen>
     </>
   );

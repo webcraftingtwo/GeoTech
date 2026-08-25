@@ -1,11 +1,29 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
-export default defineConfig({
+/**
+ * Two products from one source.
+ *
+ *   npm run build              → the installable PWA, served alongside the API
+ *   npm run build:standalone   → one self-contained .html file, no server
+ *
+ * The standalone build drops the service worker: a service worker has to be a
+ * separate file at a known path, which a single inlined document cannot
+ * provide. That costs the standalone build its offline *shell* — the page must
+ * be reachable to be opened — but not its offline *capture*, which has always
+ * been IndexedDB rather than the network.
+ */
+export default defineConfig(({ mode }) => {
+  const standalone = process.env['VITE_DEPLOYMENT'] === 'standalone';
+  void mode;
+
+  return {
   plugins: [
     react(),
-    VitePWA({
+    ...(standalone ? [viteSingleFile()] : []),
+    ...(standalone ? [] : [VitePWA({
       registerType: 'autoUpdate',
       // The application shell must be on the device before the technician goes
       // underground; nothing here may depend on a network at run time.
@@ -29,8 +47,14 @@ export default defineConfig({
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
-    }),
+    })]),
   ],
+  build: {
+    // One file means one chunk; the warning about bundle size is expected and
+    // not useful here.
+    chunkSizeWarningLimit: 4096,
+    assetsInlineLimit: standalone ? 100_000_000 : 4096,
+  },
   server: {
     port: 5173,
     proxy: { '/api': { target: 'http://localhost:4000', changeOrigin: true } },
@@ -42,4 +66,5 @@ export default defineConfig({
     port: 4173,
     proxy: { '/api': { target: 'http://localhost:4000', changeOrigin: true } },
   },
+  };
 });

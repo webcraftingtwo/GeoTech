@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { api, type FieldNotification } from '../api/client.js';
 import { db } from '../db/database.js';
+import { IS_STANDALONE } from '../deployment.js';
 import {
   IconFaceLog,
   IconHazard,
@@ -30,6 +31,15 @@ export function HomeScreen() {
   const drafts = useLiveQuery(() => db.faceLogs.filter((l) => l.status === 'DRAFT').count(), [], 0);
   const mine = useLiveQuery(() => db.faceLogs.count(), [], 0);
   const queued = useLiveQuery(() => db.queue.count(), [], 0);
+  const handover = useLiveQuery(
+    async () => {
+      if (!IS_STANDALONE) return 0;
+      const { countOutstanding } = await import('../db/handover.js');
+      return countOutstanding();
+    },
+    [],
+    0,
+  );
 
   /**
    * Notifications (§28). Only things that need the technician to do something
@@ -41,6 +51,7 @@ export function HomeScreen() {
    */
   const [notifications, setNotifications] = useState<FieldNotification[]>([]);
   const loadNotifications = useCallback(() => {
+    if (IS_STANDALONE) return;
     api.notifications().then(setNotifications).catch(() => undefined);
   }, []);
   useEffect(loadNotifications, [loadNotifications]);
@@ -157,7 +168,7 @@ export function HomeScreen() {
             My logs ({mine}){drafts > 0 ? ` · ${drafts} draft${drafts === 1 ? '' : 's'}` : ''}
           </button>
           <button className="btn" onClick={() => push({ name: 'pending' })}>
-            Sync queue ({queued})
+            {IS_STANDALONE ? `Hand over (${handover})` : `Sync queue (${queued})`}
           </button>
           <button className="btn" onClick={() => push({ name: 'search' })}>
             Search

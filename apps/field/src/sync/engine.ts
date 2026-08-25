@@ -10,6 +10,7 @@ import {
 import { ApiUnavailable, api } from '../api/client.js';
 import { db, TABLE_FOR_ENTITY, type QueueItem } from '../db/database.js';
 import { setSyncState } from '../db/repository.js';
+import { IS_STANDALONE } from '../deployment.js';
 
 /**
  * Background synchronisation.
@@ -66,6 +67,11 @@ export class SyncEngine {
   }
 
   start(): void {
+    // A standalone build has no server to reach. Guarded here as well as at
+    // the call sites, so no future caller can start a network attempt that a
+    // standalone device could never complete.
+    if (IS_STANDALONE) return;
+
     // Coming back into coverage is the moment that matters — sync immediately
     // rather than waiting for the next tick.
     window.addEventListener('online', this.handleOnline);
@@ -103,7 +109,7 @@ export class SyncEngine {
 
   /** Safe to call at any time. Concurrent calls collapse into one. */
   async syncNow(): Promise<void> {
-    if (this.running) return;
+    if (IS_STANDALONE || this.running) return;
     const session = await db.session.get('session');
     if (!session) return;
 

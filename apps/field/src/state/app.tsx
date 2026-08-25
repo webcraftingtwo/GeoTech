@@ -11,6 +11,8 @@ import { DEFAULT_CONVENTION, type MeasurementConvention, type RefList, type Conf
 import { api, type ReferenceBundle, type ReferenceWorkplace } from '../api/client.js';
 import { db, type StoredSession } from '../db/database.js';
 import { getPreferences, savePreferences } from '../db/repository.js';
+import { IS_STANDALONE, probeStorage, type StorageState } from '../deployment.js';
+import { ensureStandaloneReference, standaloneSignIn } from '../standalone.js';
 import { syncEngine, type SyncStatus } from '../sync/engine.js';
 
 /* ── navigation ───────────────────────────────────────────────────────
@@ -41,6 +43,8 @@ interface Toast {
 interface AppState {
   session: StoredSession | null;
   ready: boolean;
+  /** Whether the device can actually hold records. Checked before capture. */
+  storage: StorageState | null;
   reference: {
     workplaces: ReferenceWorkplace[];
     lists: RefList[];
@@ -56,6 +60,8 @@ interface AppState {
   toast: Toast | null;
 
   signIn: (identifier: string, password: string) => Promise<void>;
+  /** Standalone deployment only: local identification, no server. */
+  signInLocally: (name: string, employeeNo: string) => Promise<void>;
   signOut: () => Promise<void>;
   push: (route: Route) => void;
   pop: () => void;
@@ -82,6 +88,7 @@ function deviceId(): string {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [ready, setReady] = useState(false);
+  const [storage, setStorage] = useState<StorageState | null>(null);
   const [stack, setStack] = useState<Route[]>([{ name: 'home' }]);
   const [toast, setToast] = useState<Toast | null>(null);
   const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
@@ -118,11 +125,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // capturing is already here (§5).
   useEffect(() => {
     (async () => {
+      // Establish whether records can be saved at all before anything else:
+      // a technician must never capture a shift into storage that is not there.
+      const capability = await probeStorage();
+      setStorage(capability);
+
+      if (!capability.usable) {
+        setReady(true);
+        return;
+      }
+
       const stored = await db.session.get('session');
       if (stored) setSession(stored);
 
-      const cached = await db.reference.get('bundle');
-      if (cached) applyBundle(cached.payload as ReferenceBundle);
+      if (IS_STANDALONE) {
+        applyBundle(await ensureStandaloneReference());
+      } else {
+        const cached = await db.reference.get('bundle');
+        if (cached) applyBundle(cached.payload as ReferenceBundle);
+      }
 
       const prefs = await getPreferences();
       setThemeState(prefs.theme);
@@ -135,7 +156,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [applyBundle]);
 
   useEffect(() => {
-    if (!session) return;
+    // Nothing to synchronise with in a standalone deployment; the shift leaves
+    // the device as a hand-over file instead.
+    if (!session || IS_STANDALONE) return;
     const unsubscribe = syncEngine.subscribe(setSync);
     syncEngine.start();
     return () => {
@@ -143,6 +166,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncEngine.stop();
     };
   }, [session]);
+
+  const signInLocally = useCallback(async (name: string, employeeNo: string) => {
+    const stored = await standaloneSignIn({ name, employeeNo, deviceId: deviceId() });
+    setSession(stored);
+    applyBundle(await ensureStandaloneReference());
+  }, [applyBundle]);
 
   const refreshReference = useCallback(async () => {
     const bundle = await api.reference();
@@ -178,6 +207,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    if (IS_STANDALONE) {
+      const { countOutstanding } = await import('../db/handover.js');
+      const held = await countOutstanding();
+      if (held > 0) {
+        throw new Error(
+          `${held} record${held === 1 ? '' : 's'} on this device have not been handed over. Export the shift first — signing out will not delete them, but nobody else can see them until the file is handed over.`,
+        );
+      }
+      await db.session.clear();
+      setSession(null);
+      setStack([{ name: 'home' }]);
+      return;
+    }
     const outstanding = await db.queue.count();
     if (outstanding > 0) {
       throw new Error(
@@ -214,6 +256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       ready,
+      storage,
       reference,
       sync,
       route: stack[stack.length - 1]!,
@@ -222,6 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       contrast,
       toast,
       signIn,
+      signInLocally,
       signOut,
       push,
       pop,
@@ -231,7 +275,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTheme,
       setContrast,
     }),
-    [session, ready, reference, sync, stack, theme, contrast, toast, signIn, signOut, push, pop, reset, showToast, refreshReference, setTheme, setContrast],
+    [session, ready, storage, reference, sync, stack, theme, contrast, toast, signIn, signInLocally, signOut, push, pop, reset, showToast, refreshReference, setTheme, setContrast],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
