@@ -5,7 +5,16 @@
  * a desk is online, and a stale review decision would be worse than an error
  * message. Failures surface immediately and say what happened.
  */
-const BASE = '/api/v1';
+/**
+ * Where the API lives.
+ *
+ * Defaults to a relative path, which is correct when the front end is served
+ * from the same origin as the API (a reverse proxy in front of both, which is
+ * the simplest and safest arrangement). Set `VITE_API_URL` at build time to
+ * point at a separate origin — e.g. the front end on static hosting and the API
+ * elsewhere — and add that origin to the API's `CORS_ORIGINS`.
+ */
+const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`;
 
 let accessToken: string | null = sessionStorage.getItem('geotech.token');
 let refreshToken: string | null = localStorage.getItem('geotech.refresh');
