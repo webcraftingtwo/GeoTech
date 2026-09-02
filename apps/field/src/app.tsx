@@ -4,6 +4,7 @@ import { LoginScreen } from './screens/Login.js';
 import { NewFaceLogScreen } from './screens/NewFaceLog.js';
 import { OffsetWorkflowScreen } from './screens/OffsetWorkflow.js';
 import { HazardScreen, ObservationScreen, PhotoScreen, SampleScreen } from './screens/Capture.js';
+import { FaceMeasurementScreen } from './screens/FaceMeasurement.js';
 import {
   FaceLogScreen,
   HandoverScreen,
@@ -44,6 +45,7 @@ export function App() {
       {route.name === 'sample' && <SampleScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'hazard' && <HazardScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'photo' && <PhotoScreen faceLogLocalId={route.faceLogLocalId} />}
+      {route.name === 'faceMeasurement' && <FaceMeasurementScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'myLogs' && <MyLogsScreen />}
       {route.name === 'pending' && (IS_STANDALONE ? <HandoverScreen /> : <PendingSyncScreen />)}
       {route.name === 'search' && <SearchScreen />}

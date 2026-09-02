@@ -18,7 +18,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/* ── enums: structural only, never geological vocabulary ────────────── */
+/**
+ * ── enums: structural only, never geological vocabulary ──────────────
+ */
 
 enum Role {
   TECHNICIAN
@@ -77,6 +79,12 @@ enum EntityType {
   SAMPLE
   HAZARD
   PHOTO
+  FACE_MEASUREMENT
+}
+
+enum FaceTraverseDirection {
+  DOWN_DIP_TO_UP_DIP
+  UP_DIP_TO_DOWN_DIP
 }
 
 enum LateralSense {
@@ -109,50 +117,53 @@ enum SyncOperationStatus {
   FAILED
 }
 
-/* ── people, devices, sessions ──────────────────────────────────────── */
+/**
+ * ── people, devices, sessions ────────────────────────────────────────
+ */
 
 model User {
-  id           String   @id @default(uuid())
-  employeeNo   String   @unique
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(TECHNICIAN)
-  department   String?
+  id                 String    @id @default(uuid())
+  employeeNo         String    @unique
+  name               String
+  email              String    @unique
+  passwordHash       String
+  role               Role      @default(TECHNICIAN)
+  department         String?
   // Deactivation is a flag, never a delete: a historical observation must keep
   // a resolvable author for as long as the record exists.
-  active       Boolean  @default(true)
-  mustChangePassword Boolean @default(false)
-  lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active             Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  devices         Device[]
-  refreshTokens   RefreshToken[]
-  faceLogs        FaceLog[]        @relation("FaceLogTechnician")
-  observations    Observation[]
-  offsets         Offset[]         @relation("OffsetObserver")
-  interpretations Interpretation[]
-  reviews         Review[]
-  samples         Sample[]
-  hazards         Hazard[]
-  photos          Photo[]
-  auditLogs       AuditLog[]
-  notifications   Notification[]
+  devices          Device[]
+  refreshTokens    RefreshToken[]
+  faceLogs         FaceLog[]         @relation("FaceLogTechnician")
+  observations     Observation[]
+  offsets          Offset[]          @relation("OffsetObserver")
+  interpretations  Interpretation[]
+  reviews          Review[]
+  samples          Sample[]
+  hazards          Hazard[]
+  photos           Photo[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  faceMeasurements FaceMeasurement[]
 
   @@index([role, active])
   @@map("users")
 }
 
 model Device {
-  id         String   @id @default(uuid())
-  deviceId   String   @unique
+  id         String    @id @default(uuid())
+  deviceId   String    @unique
   userId     String
   label      String?
   platform   String?
   appVersion String?
   lastSeenAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   user        User        @relation(fields: [userId], references: [id])
   syncBatches SyncBatch[]
@@ -176,7 +187,9 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-/* ── mine hierarchy ─────────────────────────────────────────────────── */
+/**
+ * ── mine hierarchy ───────────────────────────────────────────────────
+ */
 
 /// Mine hierarchy as Unki actually works (UNKI-MIN-MRM-STD-201).
 ///
@@ -239,7 +252,9 @@ model Workplace {
   @@map("workplaces")
 }
 
-/* ── configurable reference data (§38, §39) ─────────────────────────── */
+/**
+ * ── configurable reference data (§38, §39) ───────────────────────────
+ */
 
 model RefList {
   id           String  @id @default(uuid())
@@ -287,20 +302,20 @@ model ValidationRule {
 }
 
 model MeasurementConventionConfig {
-  id                    String  @id @default(uuid())
-  key                   String  @unique @default("default")
-  dipMin                Float   @default(0)
-  dipMax                Float   @default(90)
-  strikeMin             Float   @default(0)
-  strikeMax             Float   @default(360)
-  dipDirectionMin       Float   @default(0)
-  dipDirectionMax       Float   @default(360)
-  allowNegativeOffset   Boolean @default(false)
-  strikeDipRule         String  @default("RIGHT_HAND")
-  strikeDipToleranceDeg Float   @default(15)
-  defaultUnit           String  @default("M")
-  maxPlausibleWidthM    Float   @default(50)
-  maxPlausibleOffsetM   Float   @default(100)
+  id                    String   @id @default(uuid())
+  key                   String   @unique @default("default")
+  dipMin                Float    @default(0)
+  dipMax                Float    @default(90)
+  strikeMin             Float    @default(0)
+  strikeMax             Float    @default(360)
+  dipDirectionMin       Float    @default(0)
+  dipDirectionMax       Float    @default(360)
+  allowNegativeOffset   Boolean  @default(false)
+  strikeDipRule         String   @default("RIGHT_HAND")
+  strikeDipToleranceDeg Float    @default(15)
+  defaultUnit           String   @default("M")
+  maxPlausibleWidthM    Float    @default(50)
+  maxPlausibleOffsetM   Float    @default(100)
   updatedAt             DateTime @updatedAt
 
   @@map("measurement_conventions")
@@ -318,7 +333,9 @@ model RecordSequence {
   @@map("record_sequences")
 }
 
-/* ── capture: face logs ─────────────────────────────────────────────── */
+/**
+ * ── capture: face logs ───────────────────────────────────────────────
+ */
 
 model FaceLog {
   id       String @id @default(uuid())
@@ -334,14 +351,14 @@ model FaceLog {
 
   // Underground the survey reference is the primary location mechanism;
   // GPS is not assumed to exist at all (§7).
-  surveyReference  String?
-  chainage         Float?
-  faceAdvance      Float?
-  easting          Float?
-  northing         Float?
-  elevation        Float?
-  coordinateSystem String?
-  locationMethod   LocationMethod?
+  surveyReference    String?
+  chainage           Float?
+  faceAdvance        Float?
+  easting            Float?
+  northing           Float?
+  elevation          Float?
+  coordinateSystem   String?
+  locationMethod     LocationMethod?
   locationConfidence Confidence?
 
   status      RecordStatus @default(DRAFT)
@@ -353,11 +370,11 @@ model FaceLog {
   extra Json?
 
   // Sync envelope — localId is the idempotency key at ingest (§30).
-  localId   String   @unique
+  localId   String    @unique
   deviceId  String?
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  version   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   syncedAt  DateTime?
 
   workplace        Workplace         @relation(fields: [workplaceId], references: [id])
@@ -367,6 +384,7 @@ model FaceLog {
   samples          Sample[]
   hazards          Hazard[]
   photos           Photo[]
+  faceMeasurements FaceMeasurement[]
 
   @@index([workplaceId, shiftDate])
   @@index([technicianId, shiftDate])
@@ -396,7 +414,7 @@ model Observation {
   /// A device-compass reading and a hand-held reading are not interchangeable (§15).
   measurementSource MeasurementSource?
 
-  confidence Confidence?
+  confidence   Confidence?
   observedById String
   observedAt   DateTime
 
@@ -508,23 +526,23 @@ model Offset {
   structureId String
 
   // ── OBSERVED (technician) ──
-  markerType     String
-  markerRef      String?
-  apparentOffset Float
-  unit           String        @default("M")
-  offsetDirection String?
-  lateralSense   LateralSense?
-  verticalSense  VerticalSense?
-  strike         Float?
-  dip            Float?
-  dipDirection   Float?
-  throwObserved  Float?
-  heaveObserved  Float?
+  markerType        String
+  markerRef         String?
+  apparentOffset    Float
+  unit              String             @default("M")
+  offsetDirection   String?
+  lateralSense      LateralSense?
+  verticalSense     VerticalSense?
+  strike            Float?
+  dip               Float?
+  dipDirection      Float?
+  throwObserved     Float?
+  heaveObserved     Float?
   measurementMethod String?
   measurementSource MeasurementSource?
-  confidence     Confidence?
-  observedById   String
-  observedAt     DateTime
+  confidence        Confidence?
+  observedById      String
+  observedAt        DateTime
 
   // ── INTERPRETED (geologist) — never replaces the values above ──
   interpretedThrow         Float?
@@ -548,6 +566,78 @@ model Offset {
   @@index([structureId])
   @@index([observedAt])
   @@map("offsets")
+}
+
+/// Tape offsets from the BMSZ — UNKI-MIN-MRM-STD-201 §9.8.
+///
+/// This is the Face Marking Sheet. The BMSZ is the datum at zero; hangingwall
+/// offsets are measured up from it (positive) and footwall offsets down
+/// (negative).
+///
+/// The applied mining-cut limits are **snapshotted** onto the record rather
+/// than looked up when it is read. Limits are revised under Chief Geologist
+/// authorisation, and a revision must never silently turn a compliant
+/// historical face into a breaching one.
+model FaceMeasurement {
+  id        String @id @default(uuid())
+  recordId  String @unique
+  faceLogId String
+
+  /// §9.8.i — distance from the survey peg to the face.
+  distanceFromPeg           Float?
+  blastNumber               String?
+  advance                   Float?
+  distanceToCapitalFpBorder Float?
+  /// §9.8.vi — the face width of the bord.
+  faceLength                Float?
+
+  /// §9.8.iv specifies 2 m. Sheets in circulation record at 1 m, so the
+  /// interval actually used is stored with the readings.
+  stationInterval   Float                 @default(2)
+  traverseDirection FaceTraverseDirection @default(DOWN_DIP_TO_UP_DIP)
+  measurementMethod String?
+
+  /// Applied limits, snapshotted. `limitSetCode` references the
+  /// `face_limit_set` reference list.
+  limitSetCode     String
+  limitHangingwall Float
+  limitFootwall    Float
+
+  /// The stations, in traverse order: distance, hangingwall, footwall, reason.
+  /// Always captured, read and corrected as a set, exactly as the sheet is.
+  stations Json
+
+  /// Derived at ingest so width-control reporting does not unpack JSON.
+  stationCount             Int    @default(0)
+  measuredCount            Int    @default(0)
+  hangingwallBreaches      Int    @default(0)
+  footwallBreaches         Int    @default(0)
+  meanStopeWidth           Float?
+  minStopeWidth            Float?
+  maxStopeWidth            Float?
+  meanHangingwallOverbreak Float?
+
+  expectedGrade Float?
+  actualGrade   Float?
+  confidence    Confidence?
+
+  measuredById String
+  measuredAt   DateTime
+
+  extra Json?
+
+  localId   String   @unique
+  deviceId  String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faceLog    FaceLog @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
+  measuredBy User    @relation(fields: [measuredById], references: [id])
+
+  @@index([faceLogId])
+  @@index([measuredAt])
+  @@map("face_measurements")
 }
 
 model Photo {
@@ -575,11 +665,11 @@ model Photo {
   capturedAt   DateTime
   capturedById String
 
-  localId   String   @unique
-  deviceId  String?
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  localId    String    @unique
+  deviceId   String?
+  version    Int       @default(1)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   uploadedAt DateTime?
 
   faceLog     FaceLog      @relation(fields: [faceLogId], references: [id], onDelete: Cascade)
@@ -665,7 +755,9 @@ model Hazard {
   @@map("hazards")
 }
 
-/* ── interpretation, review, versioning, audit ──────────────────────── */
+/**
+ * ── interpretation, review, versioning, audit ────────────────────────
+ */
 
 /// Append-only. Superseding an interpretation links the rows rather than
 /// deleting the old one, so the reasoning history stays readable (§13).
@@ -745,19 +837,21 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-/* ── synchronisation (§30) ──────────────────────────────────────────── */
+/**
+ * ── synchronisation (§30) ────────────────────────────────────────────
+ */
 
 model SyncBatch {
-  batchId    String   @id
-  deviceId   String
-  userId     String?
-  sentAt     DateTime
-  receivedAt DateTime @default(now())
-  opCount    Int      @default(0)
-  appliedCount   Int  @default(0)
-  duplicateCount Int  @default(0)
-  conflictCount  Int  @default(0)
-  failedCount    Int  @default(0)
+  batchId        String   @id
+  deviceId       String
+  userId         String?
+  sentAt         DateTime
+  receivedAt     DateTime @default(now())
+  opCount        Int      @default(0)
+  appliedCount   Int      @default(0)
+  duplicateCount Int      @default(0)
+  conflictCount  Int      @default(0)
+  failedCount    Int      @default(0)
 
   device     Device          @relation(fields: [deviceId], references: [deviceId])
   operations SyncOperation[]
@@ -781,7 +875,7 @@ model SyncOperation {
   /// Both versions preserved verbatim. Conflicts are never resolved
   /// automatically — geological observations are not last-write-wins.
   conflict      Json?
-  processedAt   DateTime @default(now())
+  processedAt   DateTime            @default(now())
 
   batch SyncBatch @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
 
@@ -791,18 +885,20 @@ model SyncOperation {
   @@map("sync_operations")
 }
 
-/* ── notifications (§28) ────────────────────────────────────────────── */
+/**
+ * ── notifications (§28) ──────────────────────────────────────────────
+ */
 
 model Notification {
-  id       String   @id @default(uuid())
-  userId   String
-  kind     String
-  title    String
-  body     String?
+  id         String      @id @default(uuid())
+  userId     String
+  kind       String
+  title      String
+  body       String?
   entityType EntityType?
-  entityId String?
-  readAt   DateTime?
-  createdAt DateTime @default(now())
+  entityId   String?
+  readAt     DateTime?
+  createdAt  DateTime    @default(now())
 
   user User @relation(fields: [userId], references: [id])
 

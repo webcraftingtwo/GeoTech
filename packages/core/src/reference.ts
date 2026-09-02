@@ -154,6 +154,38 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     ],
   },
   {
+    code: 'face_limit_set',
+    name: 'Face mining-cut limits',
+    description:
+      'BMSZ-to-hangingwall and BMSZ-to-footwall limits applied to a face (§9.8). Revised only under Chief Geologist authorisation; the applied values are stored on each measurement so a revision never reinterprets a historical face.',
+    mineSpecific: true,
+    items: [
+      item('BORD', 'Bord / ledging decline', 10, { hangingwall: 0.45, footwall: -1.35 }),
+      item('DECLINE', 'Decline', 20, { hangingwall: 1.5, footwall: -1.0 }),
+    ],
+  },
+  {
+    code: 'face_breach_reason',
+    name: 'Face limit breach reason',
+    description: 'Why a station sits outside the mining-cut limits. Required on every breaching station.',
+    mineSpecific: true,
+    items: [
+      item('BLAST_OVERBREAK', 'Blast over-break', 10),
+      item('GROUND_CONDITIONS', 'Ground conditions', 20),
+      item('BMSZ_UNCERTAIN', 'BMSZ position uncertain', 30),
+      item('SUPPORT_INSTALLED', 'Support installed', 40),
+      item('GEOLOGICAL_STRUCTURE', 'Geological structure', 50),
+      item('OTHER', 'Other — see notes', 999),
+    ],
+  },
+  {
+    code: 'face_measurement_method',
+    name: 'Face measurement method',
+    description: 'Instrument used for the tape offsets (§9.8.v).',
+    mineSpecific: false,
+    items: [item('DISTOMETER', 'Distometer', 10), item('TAPE_5M', '5 m tape measure', 20)],
+  },
+  {
     code: 'measurement_method',
     name: 'Measurement method',
     description: 'How the offset measurement was obtained.',

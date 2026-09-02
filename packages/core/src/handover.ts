@@ -27,6 +27,18 @@ import type {
   Sample,
   Structure,
 } from './types.js';
+import type { FaceMeasurement } from './facemeasurement.js';
+
+/** A face measurement as it travels: the domain shape plus its sync envelope. */
+export type StoredFaceMeasurement = FaceMeasurement & {
+  localId: string;
+  recordId: string;
+  faceLogLocalId: string;
+  measuredById: string;
+  measuredAt: string;
+  version: number;
+  updatedAt: string;
+};
 
 export const HANDOVER_FORMAT = 'unki-geotech-handover';
 export const HANDOVER_VERSION = 1;
@@ -41,6 +53,7 @@ export interface HandoverRecords {
   hazards: Hazard[];
   /** Metadata only — the binaries stay on the device (see `photoNote`). */
   photos: Photo[];
+  faceMeasurements: StoredFaceMeasurement[];
 }
 
 export interface HandoverFile {
@@ -68,6 +81,7 @@ export const emptyRecords = (): HandoverRecords => ({
   samples: [],
   hazards: [],
   photos: [],
+  faceMeasurements: [],
 });
 
 /**

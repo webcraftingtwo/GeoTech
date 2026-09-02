@@ -424,6 +424,16 @@ input, textarea { user-select: text; }
   background: var(--surface-2);
 }
 
+/* ── face section (§9.8) ────────────────────────────────────────────── */
+
+.face-section {
+  width: 100%;
+  height: auto;
+  background: var(--surface-2);
+  border-radius: 4px;
+  display: block;
+}
+
 /* ── offset diagram (§12) ───────────────────────────────────────────── */
 
 .diagram { width: 100%; height: auto; background: var(--surface-2); border-radius: var(--radius); border: 1px solid var(--line); }

@@ -2,9 +2,11 @@ import {
   emptyRecords,
   mergeHandovers,
   readHandover,
+  summariseFaceMeasurement,
   type Confidence,
   type HandoverFile,
   type HandoverRecords,
+  type StoredFaceMeasurement,
 } from '@geotech/core';
 
 /**
@@ -363,6 +365,62 @@ export function sampleRows(): Record<string, unknown>[] {
       status: sample.status,
     };
   });
+}
+
+/**
+ * Face measurements, one row per station (§9.8).
+ *
+ * A row per station rather than per face: width control is argued over
+ * individual readings, and a summary line cannot be checked back against the
+ * marking sheet. The limits each station was judged against are carried on the
+ * row, because they were snapshotted at capture and must not be re-derived by
+ * whoever opens the spreadsheet.
+ */
+export function faceMeasurementRows(): Record<string, unknown>[] {
+  const faceLogs = new Map(state.records.faceLogs.map((l) => [l.localId, l]));
+  const rows: Record<string, unknown>[] = [];
+
+  for (const m of state.records.faceMeasurements) {
+    const faceLog = faceLogs.get(m.faceLogLocalId);
+    const summary = summariseFaceMeasurement(m);
+
+    for (const station of summary.stations) {
+      rows.push({
+        recordId: m.recordId,
+        shiftDate: faceLog?.shiftDate?.slice(0, 10) ?? '',
+        workplace: faceLog?.workplaceId ?? '',
+        surveyReference: faceLog?.surveyReference ?? '',
+        blastNumber: m.blastNumber ?? '',
+        distanceFromPeg: m.distanceFromPeg ?? '',
+        faceLength: m.faceLength ?? '',
+        stationInterval: m.stationInterval,
+        traverseDirection: m.traverseDirection,
+        method: m.measurementMethod ?? '',
+        limitSet: m.limits.code,
+        limitHangingwall: m.limits.hangingwall,
+        limitFootwall: m.limits.footwall,
+        station: station.distance,
+        hangingwall: station.hangingwall ?? '',
+        footwall: station.footwall ?? '',
+        stopeWidth: station.stopeWidth ?? '',
+        hangingwallBreach: station.hangingwallBreach ? 'YES' : '',
+        footwallBreach: station.footwallBreach ? 'YES' : '',
+        hangingwallOverbreak: station.hangingwallOverbreak || '',
+        footwallOverbreak: station.footwallOverbreak || '',
+        reason: m.stations[station.index]?.reason ?? '',
+        measuredAt: m.measuredAt,
+      });
+    }
+  }
+
+  return rows;
+}
+
+/** Face measurements for one log, newest first. */
+export function faceMeasurementsFor(faceLogLocalId: string): StoredFaceMeasurement[] {
+  return state.records.faceMeasurements
+    .filter((m) => m.faceLogLocalId === faceLogLocalId)
+    .sort((a, b) => b.measuredAt.localeCompare(a.measuredAt));
 }
 
 /** The full working set, including every interpretation and review. */

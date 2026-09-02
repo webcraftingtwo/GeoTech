@@ -94,6 +94,22 @@ export function IconHazard({ size = 24, className }: IconProps) {
   );
 }
 
+/**
+ * Face measurement: the section on the marking sheet — a datum with readings
+ * above and below it.
+ */
+export function IconFaceMeasurement({ size = 24, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M3 12h18" />
+      <path d="M5 6.5h14" strokeDasharray="2.5 2" strokeWidth="1.3" />
+      <path d="M5 17.5h14" strokeDasharray="2.5 2" strokeWidth="1.3" />
+      <path d="M8 12V8.5M13 12v-2M18 12v-3" strokeWidth="1.4" />
+      <path d="M8 12v3M13 12v4.5M18 12v2.5" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
 /** Device compass, for a sensor-taken bearing. */
 export function IconCompass({ size = 24, className }: IconProps) {
   return (

@@ -32,6 +32,7 @@ export async function collectOutstanding(): Promise<HandoverRecords> {
   records.offsets = notHandedOver(await db.offsets.toArray());
   records.samples = notHandedOver(await db.samples.toArray());
   records.hazards = notHandedOver(await db.hazards.toArray());
+  records.faceMeasurements = notHandedOver(await db.faceMeasurements.toArray());
   records.photos = notHandedOver(await db.photos.toArray());
 
   return records;
@@ -78,6 +79,7 @@ export async function markHandedOver(records: HandoverRecords): Promise<void> {
     offsets: db.offsets,
     samples: db.samples,
     hazards: db.hazards,
+    faceMeasurements: db.faceMeasurements,
     photos: db.photos,
   } as const;
 

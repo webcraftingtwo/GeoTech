@@ -15,3 +15,4 @@ export * from './offset.js';
 export * from './sync.js';
 export * from './permissions.js';
 export * from './handover.js';
+export * from './facemeasurement.js';

@@ -4,7 +4,7 @@ The specification's §49 names five things that must be tested. This document
 records what is covered, how, and — just as importantly — what is not.
 
 ```bash
-npm test                       # 115 automated tests
+npm test                       # 173 automated tests
 npm run typecheck              # every workspace, strict
 npm run build                  # every workspace
 ```
@@ -71,6 +71,39 @@ records counted.
   inside its frame from 0.05 m to 500 m, and marks itself illustrative when no
   sense was recorded
 
+### Face measurement (§9.8)
+
+`packages/core/test/facemeasurement.test.ts` — 32 tests, worked against the
+readings on a **real completed sheet** (Face Marking Sheet NS3, 12/07/10) rather
+than invented numbers, so the arithmetic is checked against a face someone
+actually measured:
+
+- the sign convention holds — hangingwall positive, footwall negative, and a
+  footwall reading entered positive is an error rather than a silent flip
+- stope width is hangingwall minus footwall across the datum, giving a mean of
+  3.79 m over the sheet's eight stations
+- over-break is measured from the limit, not the datum: a mean of 0.95 m against
+  the decline hangingwall limit, and all eight stations breach both limits
+- a breach carries a required reason; a face with an unexplained breach does not
+  validate
+- station layout starts 1 m from the sidewall per §9.8.ii and steps at the
+  recorded interval, and **reproduces the NS3 sheet exactly** — a 7.2 m face at
+  1 m from the sidewall gives the sheet's own Dist 0 to 7. Both deviations from
+  the standard (the 1 m interval, the traverse starting at the sidewall) warn
+  rather than fail: they are what the sheets in circulation actually do
+- the section profile stays inside its frame for a flat face, a deep over-break
+  and a partially measured face alike
+
+`apps/api/test/facemeasurement.test.ts` — 11 tests through the HTTP layer:
+
+- a measurement syncs, and the server **recomputes** every aggregate from the
+  stations rather than storing the counts the device sent — a device claiming
+  zero breaches on breaching readings is corrected, not believed
+- the limits applied at capture are persisted on the row and are not re-read
+  from the reference list at review time
+- `/reports/width-control` returns faces ordered by breach count
+- a technician cannot alter a submitted measurement
+
 ### Security (§49.4)
 
 `apps/api/test/integrity.test.ts`, end to end through the HTTP layer:
@@ -123,10 +156,34 @@ Two scripted runs, against the real API and a real database:
    untouched, follow one structure across four faces, and run a structured
    search.
 
-Three defects were found this way and fixed: the sync indicator reported
+Four defects were found this way and fixed: the sync indicator reported
 "everything saved" while a record was queued; tapping RECORD OFFSET with no open
-face log silently became a different screen; and a missing favicon threw a 404
-on every dashboard page load.
+face log silently became a different screen; a missing favicon threw a 404 on
+every dashboard page load; and the face measurement screen let the limit set be
+changed without the change being obvious — the readings were assessed correctly,
+against limits the technician had not noticed selecting. That last one produced
+the applied-limits confirmation card rather than a code fix, because the code was
+right and the screen was not.
+
+A third run drives the **standalone pair** end to end: the field app captures
+the NS3 sheet's eight readings through the keypad, exports a hand-over file, and
+the geology tool opens it, verifies the checksum and renders the same face.
+
+It confirms on screen, on both sides and identically: 8 / 8 stations, 8
+hangingwall breaches, 8 footwall breaches, mean over-break 0.95 m, mean stope
+width 3.80 m over a 3.76–3.83 m range — the NS3 sheet's own figures. Save is
+blocked until every breaching station carries a reason, and the reason is
+recorded at the station rather than in bulk at the end, because that is the only
+point at which the technician can still see why.
+
+Two defects came out of that run and are fixed. The station layout inset 1 m at
+**both** sidewalls, so a 7.2 m face produced six stations and the application
+could not represent a sheet the mine already fills in by hand; the traverse now
+runs to the far sidewall and where it starts is the technician's choice, with
+the standard's 1 m as the default. And the two dashboards printed the same
+measurement to different precision (3.8 m against the field app's 3.80 m) and
+showed the raw reference code `BLAST_OVERBREAK` where the geologist should read
+"Blast over-break".
 
 These runs are scripted but not yet committed as a CI job — they need a running
 API, database and built front end, which is a fixture worth building before this

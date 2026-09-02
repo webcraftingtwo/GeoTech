@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { PLACEHOLDER_REFERENCE_DATA, labelFor } from '@geotech/core';
 import { api, type FaceLogDetail, type FaceLogRow, type HazardRow, type OffsetDetail } from '../api.js';
-import { Empty, OffsetDiagram, Panel, Pill, ProvenancePair, fmtDate, fmtDateTime } from '../components/ui.js';
+import { Empty, FaceSectionChart, OffsetDiagram, Panel, Pill, ProvenancePair, fmtDate, fmtDateTime } from '../components/ui.js';
 
 /** The review queue: hazards pinned above, then oldest work first (§20, §22). */
 export function ReviewQueueView({ onOpenLog }: { onOpenLog: (id: string) => void }) {
@@ -242,6 +243,73 @@ export function FaceLogView({ id, onOpenOffset, onBack }: { id: string; onOpenOf
               })}
             </tbody>
           </table>
+        </Panel>
+      )}
+
+      {(log.faceMeasurements ?? []).length > 0 && (
+        <Panel title={`Face measurements — BMSZ tape offsets (${log.faceMeasurements.length})`}>
+          {log.faceMeasurements.map((m) => (
+            <div key={m.id} className="panel-body stack" style={{ borderBottom: '1px solid var(--line)' }}>
+              <div className="row">
+                <span className="mono">{m.recordId}</span>
+                <span className="small muted">
+                  {m.measuredBy.name} · {fmtDateTime(m.measuredAt)}
+                </span>
+                <div className="spacer" />
+                <span className="small muted">
+                  limits {m.limitSetCode} · H/W {m.limitHangingwall.toFixed(2)} · F/W {m.limitFootwall.toFixed(2)}
+                </span>
+              </div>
+
+              <FaceSectionChart
+                measurement={{
+                  distanceFromPeg: m.distanceFromPeg,
+                  faceLength: m.faceLength,
+                  stationInterval: m.stationInterval,
+                  traverseDirection: 'DOWN_DIP_TO_UP_DIP',
+                  limits: {
+                    code: m.limitSetCode,
+                    label: m.limitSetCode,
+                    hangingwall: m.limitHangingwall,
+                    footwall: m.limitFootwall,
+                  },
+                  stations: m.stations,
+                }}
+              />
+
+              <div className="row" style={{ gap: 26 }}>
+                <Field label="Stations" value={`${m.measuredCount} / ${m.stationCount} at ${m.stationInterval} m`} />
+                <Field label="H/W breaches" value={String(m.hangingwallBreaches)} />
+                <Field label="F/W breaches" value={String(m.footwallBreaches)} />
+                <Field
+                  label="Mean over-break"
+                  value={m.meanHangingwallOverbreak !== null ? `${m.meanHangingwallOverbreak.toFixed(2)} m` : '—'}
+                />
+                <Field
+                  label="Mean stope width"
+                  value={m.meanStopeWidth !== null ? `${m.meanStopeWidth.toFixed(2)} m` : '—'}
+                />
+                <Field
+                  label="Range"
+                  value={
+                    m.minStopeWidth !== null
+                      ? `${m.minStopeWidth.toFixed(2)}–${m.maxStopeWidth!.toFixed(2)} m`
+                      : '—'
+                  }
+                />
+                <Field label="Peg to face" value={m.distanceFromPeg !== null ? `${m.distanceFromPeg} m` : '—'} />
+              </div>
+
+              {m.stations.some((st) => st.reason) && (
+                <div className="small muted">
+                  Breach reasons:{' '}
+                  {[...new Set(m.stations.map((st) => st.reason).filter(Boolean))]
+                    .map((code) => labelFor(PLACEHOLDER_REFERENCE_DATA, 'face_breach_reason', code))
+                    .join('; ')}
+                </div>
+              )}
+            </div>
+          ))}
         </Panel>
       )}
 

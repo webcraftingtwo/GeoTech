@@ -80,7 +80,8 @@ export type EntityType =
   | 'OFFSET'
   | 'SAMPLE'
   | 'HAZARD'
-  | 'PHOTO';
+  | 'PHOTO'
+  | 'FACE_MEASUREMENT';
 
 export const ENTITY_TYPES: readonly EntityType[] = [
   'FACE_LOG',
@@ -91,6 +92,7 @@ export const ENTITY_TYPES: readonly EntityType[] = [
   'SAMPLE',
   'HAZARD',
   'PHOTO',
+  'FACE_MEASUREMENT',
 ];
 
 /* ── device-authored record envelope (§30) ────────────────────────────── */

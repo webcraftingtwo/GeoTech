@@ -6,7 +6,9 @@ import {
   detectConflict,
   isProvisional,
   RECORD_PREFIXES,
+  summariseFaceMeasurement,
   validateRecord,
+  type FaceStation,
   type RecordPrefix,
   type SyncOperationStatus,
 } from '@geotech/core';
@@ -29,6 +31,7 @@ const operationSchema = z.object({
     'SAMPLE',
     'HAZARD',
     'PHOTO',
+    'FACE_MEASUREMENT',
   ]),
   op: z.enum(['CREATE', 'UPDATE']),
   clientVersion: z.number().int().positive(),
@@ -59,6 +62,7 @@ const DEPENDENCY_ORDER: EntityType[] = [
   'OFFSET',
   'SAMPLE',
   'HAZARD',
+  'FACE_MEASUREMENT',
   'PHOTO',
 ];
 
@@ -294,6 +298,80 @@ async function buildData(
         extra: (payload['extra'] ?? null) as Prisma.InputJsonValue,
       };
 
+    case 'FACE_MEASUREMENT': {
+      const raw = Array.isArray(payload['stations']) ? (payload['stations'] as unknown[]) : [];
+      const stations: FaceStation[] = raw.map((entry) => {
+        const st = (entry ?? {}) as Record<string, unknown>;
+        return {
+          distance: num(st['distance']) ?? 0,
+          hangingwall: num(st['hangingwall']),
+          footwall: num(st['footwall']),
+          reason: str(st['reason']),
+          note: str(st['note']),
+        };
+      });
+
+      // The applied limits travel with the readings so a later revision of the
+      // limit set cannot reinterpret a historical face.
+      const appliedLimits = (payload['limits'] ?? {}) as Record<string, unknown>;
+      const limitSetCode = str(appliedLimits['code']);
+      const limitHangingwall = num(appliedLimits['hangingwall']);
+      const limitFootwall = num(appliedLimits['footwall']);
+      if (limitSetCode === null || limitHangingwall === null || limitFootwall === null) {
+        throw new SyncReject('This face measurement carries no mining-cut limits. It cannot be assessed without them.');
+      }
+
+      // Recomputed here rather than trusted from the device: the summary is
+      // what width-control reporting reads, and it must agree with the
+      // readings actually stored.
+      const summary = summariseFaceMeasurement({
+        distanceFromPeg: num(payload['distanceFromPeg']),
+        faceLength: num(payload['faceLength']),
+        stationInterval: num(payload['stationInterval']) ?? 2,
+        traverseDirection: 'DOWN_DIP_TO_UP_DIP',
+        limits: {
+          code: limitSetCode,
+          label: str(appliedLimits['label']) ?? limitSetCode,
+          hangingwall: limitHangingwall,
+          footwall: limitFootwall,
+        },
+        stations,
+      });
+
+      return {
+        ...base,
+        faceLogId: await parentId(tx, 'faceLog', payload['faceLogLocalId'], 'face log'),
+        distanceFromPeg: num(payload['distanceFromPeg']),
+        blastNumber: str(payload['blastNumber']),
+        advance: num(payload['advance']),
+        distanceToCapitalFpBorder: num(payload['distanceToCapitalFpBorder']),
+        faceLength: num(payload['faceLength']),
+        stationInterval: num(payload['stationInterval']) ?? 2,
+        traverseDirection:
+          enumOrNull(payload['traverseDirection'], ['DOWN_DIP_TO_UP_DIP', 'UP_DIP_TO_DOWN_DIP'] as const) ??
+          'DOWN_DIP_TO_UP_DIP',
+        measurementMethod: str(payload['measurementMethod']),
+        limitSetCode,
+        limitHangingwall,
+        limitFootwall,
+        stations: stations as unknown as Prisma.InputJsonValue,
+        stationCount: summary.total,
+        measuredCount: summary.measured,
+        hangingwallBreaches: summary.hangingwallBreaches,
+        footwallBreaches: summary.footwallBreaches,
+        meanStopeWidth: summary.meanStopeWidth,
+        minStopeWidth: summary.minStopeWidth,
+        maxStopeWidth: summary.maxStopeWidth,
+        meanHangingwallOverbreak: summary.meanHangingwallOverbreak,
+        expectedGrade: num(payload['expectedGrade']),
+        actualGrade: num(payload['actualGrade']),
+        confidence: enumOrNull(payload['confidence'], CONFIDENCE),
+        measuredById: str(payload['measuredById']) ?? ctx.userId,
+        measuredAt: date(payload['measuredAt']) ?? new Date(),
+        extra: (payload['extra'] ?? null) as Prisma.InputJsonValue,
+      };
+    }
+
     case 'PHOTO':
       return {
         ...base,
@@ -325,6 +403,7 @@ async function buildData(
 
 /** Models that carry a human-readable record identifier. */
 const RECORD_ID_ENTITIES: Partial<Record<EntityType, RecordPrefix>> = {
+  FACE_MEASUREMENT: RECORD_PREFIXES['FACE_MEASUREMENT']!,
   FACE_LOG: RECORD_PREFIXES['FACE_LOG']!,
   OBSERVATION: RECORD_PREFIXES['OBSERVATION']!,
   STRUCTURE: RECORD_PREFIXES['STRUCTURE']!,
@@ -332,7 +411,10 @@ const RECORD_ID_ENTITIES: Partial<Record<EntityType, RecordPrefix>> = {
   HAZARD: RECORD_PREFIXES['HAZARD']!,
 };
 
-const MODEL_FOR: Record<EntityType, 'faceLog' | 'observation' | 'reefObservation' | 'structure' | 'offset' | 'sample' | 'hazard' | 'photo'> = {
+const MODEL_FOR: Record<
+  EntityType,
+  'faceLog' | 'observation' | 'reefObservation' | 'structure' | 'offset' | 'sample' | 'hazard' | 'photo' | 'faceMeasurement'
+> = {
   FACE_LOG: 'faceLog',
   OBSERVATION: 'observation',
   REEF_OBSERVATION: 'reefObservation',
@@ -341,6 +423,7 @@ const MODEL_FOR: Record<EntityType, 'faceLog' | 'observation' | 'reefObservation
   SAMPLE: 'sample',
   HAZARD: 'hazard',
   PHOTO: 'photo',
+  FACE_MEASUREMENT: 'faceMeasurement',
 };
 
 /* ── the route ────────────────────────────────────────────────────────── */

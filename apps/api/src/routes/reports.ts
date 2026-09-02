@@ -263,6 +263,68 @@ export default async function reportRoutes(app: FastifyInstance) {
     return { title: 'Geological Structure Report', generatedAt: new Date().toISOString(), rows };
   });
 
+  /* ── stope width control (§9.8.vii) ────────────────────────────────── */
+
+  /**
+   * Face measurements as width control expects them: one row per face, with
+   * the applied limits alongside the readings so a row can be judged on its
+   * own without looking up which limit set was in force that month.
+   */
+  app.get('/reports/width-control', { preHandler: [app.requireAction('report:generate')] }, async (request, reply) => {
+    const q = rangeQuery.parse(request.query);
+    const where =
+      q.from || q.to
+        ? { measuredAt: { ...(q.from ? { gte: new Date(q.from) } : {}), ...(q.to ? { lte: new Date(q.to) } : {}) } }
+        : {};
+
+    const measurements = await prisma.faceMeasurement.findMany({
+      where,
+      include: {
+        faceLog: { include: { workplace: { include: { section: true } } } },
+        measuredBy: { select: { name: true } },
+      },
+      orderBy: { measuredAt: 'desc' },
+      take: 1000,
+    });
+
+    const rows = measurements.map((m) => ({
+      recordId: m.recordId,
+      date: m.measuredAt.toISOString().slice(0, 10),
+      section: m.faceLog.workplace.section.name,
+      workplace: m.faceLog.workplace.code,
+      blastNumber: m.blastNumber ?? '',
+      distanceFromPeg: m.distanceFromPeg ?? '',
+      advance: m.advance ?? '',
+      faceLength: m.faceLength ?? '',
+      stationInterval: m.stationInterval,
+      limitSet: m.limitSetCode,
+      hangingwallLimit: m.limitHangingwall,
+      footwallLimit: m.limitFootwall,
+      stations: m.stationCount,
+      measured: m.measuredCount,
+      hangingwallBreaches: m.hangingwallBreaches,
+      footwallBreaches: m.footwallBreaches,
+      meanHangingwallOverbreak: m.meanHangingwallOverbreak ?? '',
+      meanStopeWidth: m.meanStopeWidth ?? '',
+      minStopeWidth: m.minStopeWidth ?? '',
+      maxStopeWidth: m.maxStopeWidth ?? '',
+      measuredBy: m.measuredBy.name,
+    }));
+
+    if (q.format === 'csv') {
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="stope-width-control.csv"');
+      return toCsv(rows);
+    }
+    return {
+      title: 'Stope Width Control',
+      generatedAt: new Date().toISOString(),
+      basis: 'Face measurements per UNKI-MIN-MRM-STD-201 §9.8. Limits shown are those applied when each face was measured.',
+      count: rows.length,
+      rows,
+    };
+  });
+
   /* ── sampling report (§26) ─────────────────────────────────────────── */
 
   app.get('/reports/samples', { preHandler: [app.requireAction('report:generate')] }, async (request, reply) => {

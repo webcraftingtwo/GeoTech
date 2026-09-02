@@ -67,6 +67,7 @@ export default async function recordRoutes(app: FastifyInstance) {
         workplace: { include: { section: { include: { mine: true } } } },
         technician: { select: { id: true, name: true, employeeNo: true } },
         reefObservations: true,
+        faceMeasurements: { include: { measuredBy: { select: { id: true, name: true } } } },
         samples: true,
         hazards: true,
         photos: true,

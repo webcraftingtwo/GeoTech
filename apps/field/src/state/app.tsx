@@ -30,6 +30,7 @@ export type Route =
   | { name: 'sample'; faceLogLocalId: string }
   | { name: 'hazard'; faceLogLocalId: string }
   | { name: 'photo'; faceLogLocalId: string }
+  | { name: 'faceMeasurement'; faceLogLocalId: string }
   | { name: 'myLogs' }
   | { name: 'pending' }
   | { name: 'search' }

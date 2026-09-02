@@ -90,13 +90,14 @@ export async function setSyncState(
 
 /** A face log plus everything captured against it. */
 export async function loadFaceLogPackage(faceLogLocalId: string) {
-  const [faceLog, observations, reefObservations, samples, hazards, photos] = await Promise.all([
+  const [faceLog, observations, reefObservations, samples, hazards, photos, faceMeasurements] = await Promise.all([
     db.faceLogs.get(faceLogLocalId),
     db.observations.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
     db.reefObservations.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
     db.samples.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
     db.hazards.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
     db.photos.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
+    db.faceMeasurements.where('faceLogLocalId').equals(faceLogLocalId).toArray(),
   ]);
 
   const observationIds = observations.map((o) => o.localId);
@@ -108,7 +109,7 @@ export async function loadFaceLogPackage(faceLogLocalId: string) {
     ? await db.offsets.where('structureLocalId').anyOf(structureIds).toArray()
     : [];
 
-  return { faceLog, observations, reefObservations, structures, offsets, samples, hazards, photos };
+  return { faceLog, observations, reefObservations, structures, offsets, samples, hazards, photos, faceMeasurements };
 }
 
 /**
@@ -131,6 +132,7 @@ export async function submitFaceLog(faceLogLocalId: string): Promise<void> {
   for (const off of pkg.offsets) await queueForSync('offsets', off.localId);
   for (const s of pkg.samples) await queueForSync('samples', s.localId);
   for (const h of pkg.hazards) await queueForSync('hazards', h.localId);
+  for (const m of pkg.faceMeasurements) await queueForSync('faceMeasurements', m.localId);
   // Photographs last: a 3 MB image must never hold up the observation it
   // illustrates.
   for (const p of pkg.photos) await queueForSync('photos', p.localId);

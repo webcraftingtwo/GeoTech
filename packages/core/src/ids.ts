@@ -16,7 +16,7 @@
  *                 offline.
  */
 
-export type RecordPrefix = 'FL' | 'GEO' | 'OFS' | 'STR' | 'SMP' | 'HAZ' | 'PHO';
+export type RecordPrefix = 'FL' | 'GEO' | 'OFS' | 'STR' | 'SMP' | 'HAZ' | 'PHO' | 'FMS';
 
 export const RECORD_PREFIXES: Record<string, RecordPrefix> = {
   FACE_LOG: 'FL',
@@ -26,6 +26,7 @@ export const RECORD_PREFIXES: Record<string, RecordPrefix> = {
   SAMPLE: 'SMP',
   HAZARD: 'HAZ',
   PHOTO: 'PHO',
+  FACE_MEASUREMENT: 'FMS',
 };
 
 export interface RecordIdParts {

@@ -68,6 +68,51 @@ so a photograph taken at step 4 already has something to belong to.
 
 ---
 
+## Flow 2b — Technician: measure the face (§9.8)
+
+Replaces the paper Face Marking Sheet. Three steps, because a technician
+measuring a face is holding a tape and cannot hold a scrolling form.
+
+| Step | Question | Input style |
+| --- | --- | --- |
+| 1 | Set up the face | Limit set (bord / decline), face width, station interval, first station, distance peg→face |
+| 2 | Walk the stations | Numeric keypad, hangingwall then footwall, then straight to the next station |
+| 3 | Check and submit | Live section, breach list, reason per breaching station |
+
+Step 1 lays out the stations from the face width. The technician never types a
+station distance — they are generated, and the technician walks them.
+
+Two things about that layout are the mine's call, not the application's, and
+both are controls on this step. §9.8.iv specifies a **2 m interval**; the sheets
+in circulation record at 1 m. §9.8.ii places the first reading **1 m from the
+sidewall**; the sheets start at the sidewall and run across (NS3: a 7.2 m face,
+stations 0 to 7). Each defaults to the standard, each warns when it is departed
+from, and the distances actually used are stored on the record — so a face is
+never read back at a spacing it was not measured at, and a sheet already filled
+in by hand can be entered exactly as it stands.
+
+Step 2 draws the section as it is measured. Each reading is checked against the
+limits the moment it is entered, so a station that is out is red before the
+technician has moved on from it, not at the end when they have packed the tape
+away.
+
+The applied limits are shown on their own card at step 1 and repeated at step 3.
+This is not decoration: a bord and a decline are cut to different profiles, and
+the same eight readings are compliant against one and six breaches against the
+other. A mis-tap on that control is the single most consequential error
+available on this screen, so it is confirmed twice and stored with the record.
+
+**A breach cannot be submitted without a reason.** Not a warning — the save
+button does not work. The reason is chosen from a chip list (blast over-break,
+ground conditions, BMSZ position uncertain, support installed, geological
+structure) and it is asked for **at the station**, the moment the reading
+breaches, rather than in a list at the end: standing at station 4 is the only
+place the technician can still see why station 4 is out. A face that was cut
+outside limits is a fact; why it was is the part that is lost if it is not
+written down at the face.
+
+---
+
 ## Flow 3 — Sync (§5, §30)
 
 ```

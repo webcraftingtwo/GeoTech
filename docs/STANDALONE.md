@@ -114,7 +114,7 @@ simplest way to produce one.
 **Technician**
 
 1. Open the application, enter name and employee number, start the shift
-2. Capture face logs, observations, offsets, samples and hazards
+2. Capture face logs, observations, offsets, face measurements, samples and hazards
 3. **Hand over** → *Export shift file* at the end of the shift
 4. Send the file to the geologist by whatever means the mine already uses
 
@@ -126,7 +126,10 @@ is written, so a lost file is never a lost observation.
 1. Open the dashboard, enter your name (it is recorded against your interpretations)
 2. **Shift files** → *Open shift files*; several devices can be opened at once
 3. Review face logs, add interpretations, record decisions
-4. **Export** → CSV for the spreadsheet, or the full working set to retain
+4. **Width control** → every measured face, worst first, with its section drawn
+   as the marking sheet draws it
+5. **Export** → CSV for the spreadsheet (offsets, samples, or width control one
+   row per station), or the full working set to retain
 
 Every file is checked against the checksum written when it was exported. A file
 that fails is refused with an explanation, not silently partially loaded.

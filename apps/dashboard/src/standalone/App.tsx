@@ -1,12 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildOffsetDiagram, type Confidence, type GeologicalOffset } from '@geotech/core';
-import { Empty, OffsetDiagram, Panel, Pill, ProvenancePair, fmtDate, fmtDateTime } from '../components/ui.js';
+import {
+  PLACEHOLDER_REFERENCE_DATA,
+  buildOffsetDiagram,
+  labelFor,
+  summariseFaceMeasurement,
+  type Confidence,
+  type GeologicalOffset,
+  type StoredFaceMeasurement,
+} from '@geotech/core';
+import {
+  Empty,
+  FaceSectionChart,
+  OffsetDiagram,
+  Panel,
+  Pill,
+  ProvenancePair,
+  fmtDate,
+  fmtDateTime,
+} from '../components/ui.js';
 import {
   addInterpretation,
   addReview,
   clearAll,
   currentInterpretation,
   download,
+  faceMeasurementRows,
+  faceMeasurementsFor,
   getState,
   interpretationsFor,
   latestReview,
@@ -36,7 +55,7 @@ import {
  * audit trail confined to this machine.
  */
 
-type View = 'files' | 'offsets' | 'logs' | 'structures' | 'export';
+type View = 'files' | 'offsets' | 'logs' | 'widths' | 'structures' | 'export';
 
 export function StandaloneApp() {
   const [, force] = useState(0);
@@ -61,6 +80,13 @@ export function StandaloneApp() {
         <NavItem label="Shift files" count={state.files.length} active={view === 'files'} onClick={() => setView('files')} />
         <NavItem label="Offsets" count={state.records.offsets.length} active={view === 'offsets'} onClick={() => setView('offsets')} disabled={!loaded} />
         <NavItem label="Face logs" count={state.records.faceLogs.length} active={view === 'logs'} onClick={() => setView('logs')} disabled={!loaded} />
+        <NavItem
+          label="Width control"
+          count={state.records.faceMeasurements.length}
+          active={view === 'widths'}
+          onClick={() => setView('widths')}
+          disabled={!loaded}
+        />
         <NavItem label="Structures" active={view === 'structures'} onClick={() => setView('structures')} disabled={!loaded} />
         <NavItem label="Export" active={view === 'export'} onClick={() => setView('export')} disabled={!loaded} />
 
@@ -96,6 +122,7 @@ export function StandaloneApp() {
         {view === 'files' && <FilesView />}
         {view === 'offsets' && <OffsetsView selected={selected} onSelect={setSelected} />}
         {view === 'logs' && <LogsView />}
+        {view === 'widths' && <WidthsView />}
         {view === 'structures' && <StructuresView onOpenOffset={(id) => { setSelected(id); setView('offsets'); }} />}
         {view === 'export' && <ExportView />}
       </main>
@@ -456,6 +483,7 @@ function LogsView() {
 
   if (log) {
     const observations = state.records.observations.filter((o) => o.faceLogLocalId === log.localId);
+    const measurements = faceMeasurementsFor(log.localId);
     const samples = state.records.samples.filter((s) => s.faceLogLocalId === log.localId);
     const hazards = state.records.hazards.filter((h) => h.faceLogLocalId === log.localId);
     const history = reviewsFor(log.localId);
@@ -500,6 +528,14 @@ function LogsView() {
             </table>
           )}
         </Panel>
+
+        {measurements.length > 0 && (
+          <Panel title={`Face measurements \u2014 BMSZ tape offsets (${measurements.length})`}>
+            {measurements.map((m) => (
+              <FaceMeasurementDetail key={m.localId} measurement={m} />
+            ))}
+          </Panel>
+        )}
 
         {samples.length > 0 && (
           <Panel title={`Samples (${samples.length})`}>
@@ -711,6 +747,183 @@ function StructuresView({ onOpenOffset }: { onOpenOffset: (id: string) => void }
   );
 }
 
+/* ── width control (§9.8) ──────────────────────────────────── */
+
+function FaceMeasurementField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="label">{label}</span>
+      <div className="mono" style={{ fontSize: 14 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One measured face.
+ *
+ * The limits are shown beside the section rather than left implicit: a bord
+ * and a decline are cut to different profiles, and a reading that breaches one
+ * is well inside the other. Which set the technician applied underground is
+ * part of the reading, not a lookup done at review time — so it is what is
+ * displayed, taken from the record itself.
+ */
+function FaceMeasurementDetail({ measurement }: { measurement: StoredFaceMeasurement }) {
+  const summary = summariseFaceMeasurement(measurement);
+  // Codes are stored; the geologist reads labels. A mine that has replaced the
+  // seeded list falls back to its own code rather than to nothing.
+  const reasons = [...new Set(measurement.stations.map((st) => st.reason).filter(Boolean))].map((code) =>
+    labelFor(PLACEHOLDER_REFERENCE_DATA, 'face_breach_reason', code),
+  );
+
+  return (
+    <div className="panel-body stack" style={{ borderBottom: '1px solid var(--line)' }}>
+      <div className="row">
+        <span className="mono">{measurement.recordId}</span>
+        <span className="small muted">{fmtDateTime(measurement.measuredAt)}</span>
+        <div className="spacer" />
+        <span className="small muted">
+          {measurement.limits.label} · H/W {measurement.limits.hangingwall.toFixed(2)} · F/W{' '}
+          {measurement.limits.footwall.toFixed(2)}
+        </span>
+      </div>
+
+      <FaceSectionChart measurement={measurement} />
+
+      <div className="row" style={{ gap: 26, flexWrap: 'wrap' }}>
+        <FaceMeasurementField
+          label="Stations"
+          value={`${summary.measured} / ${summary.total} at ${measurement.stationInterval} m`}
+        />
+        <FaceMeasurementField label="H/W breaches" value={String(summary.hangingwallBreaches)} />
+        <FaceMeasurementField label="F/W breaches" value={String(summary.footwallBreaches)} />
+        <FaceMeasurementField
+          label="Mean over-break"
+          value={summary.meanHangingwallOverbreak !== null ? `${summary.meanHangingwallOverbreak.toFixed(2)} m` : '—'}
+        />
+        <FaceMeasurementField
+          label="Mean stope width"
+          value={summary.meanStopeWidth !== null ? `${summary.meanStopeWidth.toFixed(2)} m` : '—'}
+        />
+        <FaceMeasurementField
+          label="Range"
+          value={
+            summary.minStopeWidth !== null
+              ? `${summary.minStopeWidth.toFixed(2)}–${summary.maxStopeWidth!.toFixed(2)} m`
+              : '—'
+          }
+        />
+        <FaceMeasurementField
+          label="Peg to face"
+          value={measurement.distanceFromPeg !== null ? `${measurement.distanceFromPeg} m` : '—'}
+        />
+      </div>
+
+      {summary.breachesWithoutReason > 0 && (
+        <div className="banner">
+          {summary.breachesWithoutReason} breaching station
+          {summary.breachesWithoutReason === 1 ? ' has' : 's have'} no reason recorded. The reading stands as measured;
+          the explanation has to be obtained from the technician.
+        </div>
+      )}
+
+      {reasons.length > 0 && <div className="small muted">Breach reasons: {reasons.join('; ')}</div>}
+    </div>
+  );
+}
+
+/**
+ * Width control across every file open on this machine.
+ *
+ * Ordered worst first. A geologist opening this wants the faces that were cut
+ * outside the limits, not a chronological list — the chronology is in the face
+ * logs.
+ */
+function WidthsView() {
+  const state = getState();
+  const faceLogs = new Map(state.records.faceLogs.map((l) => [l.localId, l]));
+
+  const rows = state.records.faceMeasurements
+    .map((measurement) => ({ measurement, summary: summariseFaceMeasurement(measurement) }))
+    .sort(
+      (a, b) =>
+        b.summary.breachingStations - a.summary.breachingStations ||
+        b.measurement.measuredAt.localeCompare(a.measurement.measuredAt),
+    );
+
+  const breaching = rows.filter((r) => r.summary.breachingStations > 0).length;
+
+  return (
+    <>
+      <h1 className="page-title">Width control</h1>
+      <p className="page-sub">
+        Tape offsets from the BMSZ, as measured at the face. {rows.length} face
+        {rows.length === 1 ? '' : 's'} measured, {breaching} with at least one station outside the limits it was cut
+        to.
+      </p>
+
+      <Panel title="Measured faces">
+        {rows.length === 0 ? (
+          <Empty>No face measurements in the files opened on this machine.</Empty>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Record</th>
+                <th>Working place</th>
+                <th>Shift</th>
+                <th>Limits</th>
+                <th className="num">Stations</th>
+                <th className="num">H/W</th>
+                <th className="num">F/W</th>
+                <th className="num">Mean width</th>
+                <th className="num">Over-break</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ measurement, summary }) => {
+                const log = faceLogs.get(measurement.faceLogLocalId);
+                return (
+                  <tr key={measurement.localId}>
+                    <td className="mono">{measurement.recordId}</td>
+                    <td>{log?.workplaceId ?? '—'}</td>
+                    <td className="small muted">{fmtDate(log?.shiftDate)}</td>
+                    <td className="small">{measurement.limits.code}</td>
+                    <td className="num">
+                      {summary.measured} / {summary.total}
+                    </td>
+                    <td className="num" style={summary.hangingwallBreaches > 0 ? { color: 'var(--danger)' } : undefined}>
+                      {summary.hangingwallBreaches}
+                    </td>
+                    <td className="num" style={summary.footwallBreaches > 0 ? { color: 'var(--danger)' } : undefined}>
+                      {summary.footwallBreaches}
+                    </td>
+                    <td className="num">
+                      {summary.meanStopeWidth !== null ? `${summary.meanStopeWidth.toFixed(2)} m` : '—'}
+                    </td>
+                    <td className="num">
+                      {summary.meanHangingwallOverbreak !== null
+                        ? `${summary.meanHangingwallOverbreak.toFixed(2)} m`
+                        : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+
+      {rows.map(({ measurement }) => (
+        <Panel key={measurement.localId} title={`${measurement.recordId} — ${faceLogs.get(measurement.faceLogLocalId)?.workplaceId ?? 'working place unknown'}`}>
+          <FaceMeasurementDetail measurement={measurement} />
+        </Panel>
+      ))}
+    </>
+  );
+}
+
 /* ── export ──────────────────────────────────────────────────────────── */
 
 function ExportView() {
@@ -740,6 +953,13 @@ function ExportView() {
             disabled={state.records.samples.length === 0}
           >
             Samples CSV ({state.records.samples.length})
+          </button>
+          <button
+            className="btn"
+            onClick={() => download(`geotech-width-control-${stamp}.csv`, toCsv(faceMeasurementRows()), 'text/csv')}
+            disabled={state.records.faceMeasurements.length === 0}
+          >
+            Width control CSV ({state.records.faceMeasurements.length})
           </button>
         </div>
       </Panel>

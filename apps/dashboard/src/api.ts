@@ -203,6 +203,28 @@ export interface FaceLogDetail extends FaceLogRow {
     }>;
   }>;
   samples: Array<{ id: string; sampleNumber: string; sampleType: string; length: number | null; status: string }>;
+  faceMeasurements: Array<{
+    id: string;
+    recordId: string;
+    distanceFromPeg: number | null;
+    blastNumber: string | null;
+    faceLength: number | null;
+    stationInterval: number;
+    limitSetCode: string;
+    limitHangingwall: number;
+    limitFootwall: number;
+    stations: Array<{ distance: number; hangingwall: number | null; footwall: number | null; reason?: string | null }>;
+    stationCount: number;
+    measuredCount: number;
+    hangingwallBreaches: number;
+    footwallBreaches: number;
+    meanStopeWidth: number | null;
+    minStopeWidth: number | null;
+    maxStopeWidth: number | null;
+    meanHangingwallOverbreak: number | null;
+    measuredAt: string;
+    measuredBy: { name: string };
+  }>;
   hazards: HazardRow[];
   photos: Array<{ id: string; storageKey: string | null; capturedAt: string }>;
   reviews: Array<{ id: string; status: string; comment: string | null; reviewedAt: string; reviewer: { name: string; role: string } }>;

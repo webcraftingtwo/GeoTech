@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { buildOffsetDiagram, type OffsetGeometryInput } from '@geotech/core';
+import { buildOffsetDiagram, buildSectionProfile, type OffsetGeometryInput } from '@geotech/core';
 
 export function Tile({ label, value, tone }: { label: string; value: ReactNode; tone?: 'danger' | 'warn' }) {
   return (
@@ -149,6 +149,37 @@ export function OffsetDiagram({ input }: { input: OffsetGeometryInput }) {
         {diagram.senseText}
       </figcaption>
     </figure>
+  );
+}
+
+/** The face section from the marking sheet (§9.8). */
+export function FaceSectionChart({ measurement }: { measurement: import('@geotech/core').FaceMeasurement }) {
+  const profile = buildSectionProfile(measurement, { width: 460, height: 190 });
+  const path = (points: { x: number; y: number }[]) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${profile.width} ${profile.height}`} style={{ width: '100%', maxWidth: 520, background: 'var(--panel-2)', borderRadius: 4 }} role="img" aria-label="Face section from the BMSZ">
+      {profile.ticks.map((t) => (
+        <g key={t.value}>
+          <line x1={34} x2={profile.width - 12} y1={t.y} y2={t.y} stroke="var(--line)" strokeWidth="0.5" />
+          <text x={30} y={t.y + 3} textAnchor="end" fontSize="7" fill="var(--muted)" fontFamily="var(--mono)">{t.value.toFixed(2)}</text>
+        </g>
+      ))}
+      {[{ y: profile.hangingwallLimitY, label: 'H/W LIMIT' }, { y: profile.footwallLimitY, label: 'F/W LIMIT' }].map((l) => (
+        <g key={l.label}>
+          <line x1={34} x2={profile.width - 12} y1={l.y} y2={l.y} stroke="var(--danger)" strokeWidth="1" strokeDasharray="5 3" />
+          <text x={profile.width - 13} y={l.y - 3} textAnchor="end" fontSize="6" fill="var(--danger)">{l.label}</text>
+        </g>
+      ))}
+      <line x1={34} x2={profile.width - 12} y1={profile.datumY} y2={profile.datumY} stroke="var(--accent)" strokeWidth="2" />
+      <text x={37} y={profile.datumY - 4} fontSize="7" fill="var(--accent)" fontWeight="700">BMSZ</text>
+      <path d={path(profile.hangingwall)} fill="none" stroke="var(--text)" strokeWidth="1.5" />
+      <path d={path(profile.footwall)} fill="none" stroke="var(--text)" strokeWidth="1.5" opacity="0.7" />
+      {[...profile.hangingwall, ...profile.footwall].map((pt, i) => (
+        <circle key={i} cx={pt.x} cy={pt.y} r={pt.breach ? 3.6 : 2.4} fill={pt.breach ? 'var(--danger)' : 'var(--ok)'} />
+      ))}
+    </svg>
   );
 }
 

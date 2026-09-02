@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { scoreRecord, validateFaceLog } from '@geotech/core';
-import { IconHazard, IconObservation, IconOffset, IconPhoto, IconSample } from '../components/Icons.js';
+import { scoreRecord, summariseFaceMeasurement, validateFaceLog } from '@geotech/core';
+import { IconFaceMeasurement, IconHazard, IconObservation, IconOffset, IconPhoto, IconSample } from '../components/Icons.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { QualityMeter } from '../components/Quality.js';
 import { db } from '../db/database.js';
@@ -34,7 +34,7 @@ export function FaceLogScreen({ localId }: { localId: string }) {
     );
   }
 
-  const { faceLog, observations, structures, offsets, samples, hazards, photos } = pkg;
+  const { faceLog, observations, structures, offsets, samples, hazards, photos, faceMeasurements } = pkg;
   const editable = faceLog.status === 'DRAFT';
 
   const validation = validateFaceLog(faceLog, {
@@ -95,6 +95,9 @@ export function FaceLogScreen({ localId }: { localId: string }) {
             <button className="btn" onClick={() => push({ name: 'observation', faceLogLocalId: localId })}>
               <IconObservation size={20} /> Observation
             </button>
+            <button className="btn" onClick={() => push({ name: 'faceMeasurement', faceLogLocalId: localId })}>
+              <IconFaceMeasurement size={20} /> Measurement
+            </button>
             <button className="btn" onClick={() => push({ name: 'photo', faceLogLocalId: localId })}>
               <IconPhoto size={20} /> Photo
             </button>
@@ -133,6 +136,25 @@ export function FaceLogScreen({ localId }: { localId: string }) {
               </span>
             </div>
           ))}
+        </Section>
+
+        <Section title="Face measurements" count={faceMeasurements.length}>
+          {faceMeasurements.map((m) => {
+            const s = summariseFaceMeasurement(m);
+            return (
+              <div key={m.localId} className="record-row">
+                <div style={{ flex: 1 }}>
+                  <div className="value">
+                    {s.measured}/{s.total} stations
+                  </div>
+                  <div className="rec-id">{m.recordId}</div>
+                </div>
+                <span className="small" style={{ color: s.breachingStations > 0 ? 'var(--danger)' : 'var(--muted)' }}>
+                  {s.breachingStations > 0 ? `${s.breachingStations} breaching` : 'in control'}
+                </span>
+              </div>
+            );
+          })}
         </Section>
 
         <Section title="Samples" count={samples.length}>

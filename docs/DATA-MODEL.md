@@ -30,6 +30,7 @@ users ──< devices
          │  │         ├──< hazards                     └──< photos
          │  │         └──< photos
          │  ├──< reef_observations
+         │  ├──< face_measurements   (§9.8 — BMSZ tape offsets)
          │  ├──< samples
          │  └──< photos
          │
@@ -133,6 +134,52 @@ Binary lives in object storage. `sha256` gives duplicate detection and integrity
 proof. `annotations` holds the digital face-mapping vector layer (§9) so the original
 photograph is never altered.
 
+### `face_measurements` (§9.8)
+
+The face measurement recorded on the Face Marking Sheet: tape offsets from the
+**BMSZ** — the Blast Marking Stope Zero line painted on the face — taken at
+stations across it.
+
+`faceLogLocalId · distanceFromPeg · blastNumber · advance ·
+distanceToCapitalFpBorder · faceLength · stationInterval · traverseDirection ·
+measurementMethod · limitSetCode · limitHangingwall · limitFootwall ·
+stations(JSONB) · expectedGrade · actualGrade · confidence · measuredById ·
+measuredAt`
+
+Sign convention, fixed in `packages/core/src/facemeasurement.ts` and never
+re-derived anywhere else: **the BMSZ is zero, hangingwall offsets are positive
+(up), footwall offsets are negative (down).** A footwall reading entered as a
+positive number is rejected rather than silently flipped — the two readings at a
+station are what determine whether the cut was in limits, and guessing at a
+sign would change that answer.
+
+`stations` is a JSONB array of `{ distance, hangingwall, footwall, reason, note }`.
+It is stored as an array rather than a child table because a station has no
+identity outside its face: nothing references it, nothing reviews it
+independently, and the readings across a face are only meaningful in order.
+
+**The applied limits are snapshotted onto the row.** `limitSetCode`,
+`limitHangingwall` and `limitFootwall` are copied from the reference list at
+capture, not looked up at read time. A bord (H/W +0.45, F/W −1.35) and a decline
+(H/W +1.5, F/W −1.0) are cut to different profiles; if the mine later revises a
+limit, every historical face must still show what it was actually judged
+against, or the record stops meaning what it said when it was signed.
+
+The derived aggregates — `stationCount`, `measuredCount`, `hangingwallBreaches`,
+`footwallBreaches`, `meanStopeWidth`, `minStopeWidth`, `maxStopeWidth`,
+`meanHangingwallOverbreak` — are **recomputed server-side at ingest** from the
+stations and the snapshotted limits. The device sends them, and the server
+ignores what it sent: a breach count is a compliance figure, and it is not taken
+on the word of a handset.
+
+`stationInterval` is stored per record, and the traverse's starting distance is
+recoverable from the first station. UNKI-MIN-MRM-STD-201 §9.8.iv specifies a 2 m
+interval and §9.8.ii the first reading 1 m from the sidewall; both are the
+defaults. The sheets in circulation do neither — Face Marking Sheet NS3 records
+a 7.2 m face at 1 m from the sidewall outwards, stations 0 to 7 — so the
+application warns on each deviation and stores what was used, rather than
+assuming a convention and making every reading unreadable at review.
+
 ### `samples` (§16)
 `sampleNumber` is **globally unique** — the constraint is in the database, and the
 device additionally checks its local set before accepting, so a duplicate is caught
@@ -173,7 +220,8 @@ Both are cached to devices and evaluated by the shared engine in `packages/core`
 `observation_type · structure_type · reef_name · lithology · contact_type ·
 contact_quality · sample_type · hazard_type · confidence · unit · offset_direction ·
 marker_type · surface_condition · infill · ground_condition · workplace_type ·
-shift · coordinate_system · location_method`
+shift · coordinate_system · location_method · face_limit_set ·
+face_breach_reason · face_measurement_method`
 
 > Seed values are **neutral placeholders for development only**. They are not
 > official Unki geological codes. Authorized mine personnel must enter the

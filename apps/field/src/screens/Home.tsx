@@ -5,6 +5,7 @@ import { db } from '../db/database.js';
 import { IS_STANDALONE } from '../deployment.js';
 import {
   IconFaceLog,
+  IconFaceMeasurement,
   IconHazard,
   IconObservation,
   IconOffset,
@@ -127,6 +128,14 @@ export function HomeScreen() {
             <span>
               RECORD OFFSET
               <span className="sub">Displacement across a structure</span>
+            </span>
+          </button>
+
+          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'faceMeasurement', faceLogLocalId: id }))}>
+            <span className="glyph"><IconFaceMeasurement size={30} /></span>
+            <span>
+              FACE MEASUREMENT
+              <span className="sub">BMSZ tape offsets across the face</span>
             </span>
           </button>
 

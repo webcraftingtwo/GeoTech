@@ -22,6 +22,13 @@ is emphatic about between a **fault** (observable displacement) and a **shear**
 Everything so derived is still held as configuration rather than code, so the
 mine can change it when the standard is revised.
 
+The one thing deliberately **not** held as configuration is the BMSZ sign
+convention — hangingwall positive, footwall negative, datum at zero. It is
+fixed in `packages/core/src/facemeasurement.ts` and used by the device, the
+server and both dashboards from that one definition. A configurable sign is a
+configurable way to invert a face profile, and there is no reading of the
+standard under which the mine would want to.
+
 ## 1. Requirements analysis (Stage 1)
 
 The problem is not "build forms". It is: **a geological observation made at a
