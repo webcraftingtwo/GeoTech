@@ -23,7 +23,7 @@ Normalized PostgreSQL schema. Authoritative definition lives in
 ```
 users ──< devices
   │
-  └──< face_logs >── workplaces >── sections >── levels >── mines
+  └──< face_logs >── workplaces >── sections >── mines
          │  │
          │  ├──< observations ──< structures ──< offsets ──< interpretations
          │  │         │                                │
@@ -48,10 +48,22 @@ ref_lists ──< ref_items          validation_rules          sync_batches ─�
 `role ∈ TECHNICIAN | GEOLOGIST | SENIOR_GEOLOGIST | ADMIN` (§3). Deactivation is a
 flag, never a delete — historical observations must keep a resolvable author.
 
-### Mine hierarchy — `mines` / `levels` / `sections` / `workplaces`
-`workplaces` carries `code · name · workplaceType · panel · drive · stope · face · active`
-where `workplaceType ∈ panel | raise | drive | stope | development_end` (by ref code).
-Technicians select from this hierarchy; they never type a workplace name.
+### Mine hierarchy — `mines` / `sections` / `workplaces`
+
+**There is no level.** Unki organises underground work by **section** —
+UNKI-MIN-MRM-STD-201 §3.0 defines a section as "an area of responsibility
+allocated to a specific person" — and a section contains numbered **bords**:
+section `12S` ("12 South"), bords 1 to 9, plus a strike belt.
+
+`workplaces` carries `code · name · workplaceType · bord · strikeBelt · drive ·
+stope · face · active`, where `workplaceType ∈ bord | strike_belt | end | raise
+| decline | ledging` by reference code, configurable per mine.
+
+"Half level" appears in the standard (§9.1: a technician covers "two half
+levels consisting of 6 bords and one strike belt") but describes a technician's
+beat, not a place a face belongs to, so it is not part of the hierarchy.
+
+Technicians select section then bord; they never type a workplace name.
 
 ### `face_logs`
 ```

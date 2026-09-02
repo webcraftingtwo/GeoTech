@@ -7,6 +7,21 @@
 
 ---
 
+## 0. Source standard
+
+The geological vocabulary, hierarchy and procedure in this system follow
+**UNKI-MIN-MRM-STD-201, "BMSZ Marking & Face Measurements", version 2.0
+(20/05/11)**, the Unki Mines MRM operational standard.
+
+Terms taken from it and used throughout: **BMSZ** (the Base of the Main
+Sulphide Zone), **section** ("an area of responsibility allocated to a specific
+person"), **bord**, **strike belt**, **end**, and the distinction the standard
+is emphatic about between a **fault** (observable displacement) and a **shear**
+(closely spaced jointing from tangential stress).
+
+Everything so derived is still held as configuration rather than code, so the
+mine can change it when the standard is revised.
+
 ## 1. Requirements analysis (Stage 1)
 
 The problem is not "build forms". It is: **a geological observation made at a

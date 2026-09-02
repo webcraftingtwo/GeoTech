@@ -16,7 +16,7 @@ export async function resetDatabase(): Promise<void> {
       sync_operations, sync_batches, audit_logs, record_versions, reviews,
       interpretations, notifications, photos, offsets, structures, observations,
       reef_observations, samples, hazards, face_logs, devices, refresh_tokens,
-      workplaces, sections, levels, mines, ref_items, ref_lists,
+      workplaces, sections, mines, ref_items, ref_lists,
       validation_rules, measurement_conventions, record_sequences, users
     RESTART IDENTITY CASCADE
   `);
@@ -48,10 +48,9 @@ export async function seedFixtures(app: FastifyInstance): Promise<Fixtures> {
   await prisma.measurementConventionConfig.create({ data: { key: 'default', ...DEFAULT_CONVENTION } });
 
   const mine = await prisma.mine.create({ data: { code: 'TST', name: 'Test Mine' } });
-  const level = await prisma.level.create({ data: { mineId: mine.id, code: 'L12', name: 'Level 12' } });
-  const section = await prisma.section.create({ data: { levelId: level.id, code: 'N', name: 'North' } });
+  const section = await prisma.section.create({ data: { mineId: mine.id, code: '12S', name: '12 South' } });
   const workplace = await prisma.workplace.create({
-    data: { sectionId: section.id, code: 'L12NP1', name: 'Panel 1', workplaceType: 'PANEL', panel: 'P1' },
+    data: { sectionId: section.id, code: '12S-B4', name: '12 South bord 4', workplaceType: 'BORD', bord: '4' },
   });
 
   const passwordHash = await hashPassword('TestPass123');

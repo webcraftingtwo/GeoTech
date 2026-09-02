@@ -62,7 +62,7 @@ export function ReviewQueueView({ onOpenLog }: { onOpenLog: (id: string) => void
             <thead>
               <tr>
                 <th>Record</th>
-                <th>Level / workplace</th>
+                <th>Section / working place</th>
                 <th>Technician</th>
                 <th>Shift</th>
                 <th className="num">Obs</th>
@@ -77,7 +77,7 @@ export function ReviewQueueView({ onOpenLog }: { onOpenLog: (id: string) => void
                 <tr key={log.id} data-clickable="true" onClick={() => onOpenLog(log.id)}>
                   <td className="mono">{log.recordId}</td>
                   <td>
-                    {log.workplace.section.level.code} / {log.workplace.code}
+                    {log.workplace.section.name} · {log.workplace.code}
                   </td>
                   <td>{log.technician.name}</td>
                   <td>
@@ -147,7 +147,7 @@ export function FaceLogView({ id, onOpenOffset, onBack }: { id: string; onOpenOf
       </div>
       <h1 className="page-title">{log.recordId}</h1>
       <p className="page-sub">
-        {log.workplace.section.level.code} / {log.workplace.code} · {log.technician.name} · {fmtDate(log.shiftDate)} {log.shift} ·{' '}
+        {log.workplace.section.name} · {log.workplace.code} · {log.technician.name} · {fmtDate(log.shiftDate)} {log.shift} ·{' '}
         <Pill status={log.status} />
       </p>
 

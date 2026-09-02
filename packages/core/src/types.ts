@@ -126,15 +126,23 @@ export type ExtraFields = Record<string, unknown>;
 
 /* ── mine hierarchy ───────────────────────────────────────────────────── */
 
+/**
+ * A working place, as Unki organises them (UNKI-MIN-MRM-STD-201).
+ *
+ * There is no level: work is organised by **section** — "an area of
+ * responsibility allocated to a specific person" — containing numbered
+ * **bords**, e.g. section "12 South", bords 1 to 9.
+ */
 export interface Workplace {
   id: string;
   mineCode: string;
-  levelCode: string;
   sectionCode: string;
   code: string;
   name: string;
   workplaceType: string;
-  panel?: string | null;
+  /** Bord number within the section, where the workplace is a bord. */
+  bord?: string | null;
+  strikeBelt?: string | null;
   drive?: string | null;
   stope?: string | null;
   face?: string | null;

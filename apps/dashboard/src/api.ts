@@ -155,7 +155,7 @@ export interface FaceLogRow {
   dataQuality: number | null;
   submittedAt: string | null;
   technician: { id: string; name: string };
-  workplace: { code: string; name: string; section: { code: string; level: { code: string } } };
+  workplace: { code: string; name: string; bord?: string | null; section: { code: string; name: string } };
   _count?: { observations: number; photos: number; samples: number; hazards: number };
 }
 
@@ -232,7 +232,7 @@ export interface StructureHistory {
   observations: Array<{
     offsetId: string;
     recordId: string;
-    level: string;
+    section: string;
     workplace: string;
     date: string;
     technician: string;
@@ -250,7 +250,7 @@ export interface StructureHistory {
 export interface SearchResult {
   parsed: Record<string, unknown>;
   faceLogs: FaceLogRow[];
-  offsets: Array<OffsetRow & { structure: { structureType: string; observation: { faceLog: { workplace: { code: string; section: { level: { code: string } } } } } } }>;
+  offsets: Array<OffsetRow & { structure: { structureType: string; observation: { faceLog: { workplace: { code: string; section: { code: string } } } } } }>;
   samples: Array<{ id: string; sampleNumber: string; sampleType: string }>;
   hazards: Array<{ id: string; recordId: string; hazardType: string; description: string }>;
 }

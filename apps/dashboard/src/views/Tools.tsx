@@ -41,7 +41,7 @@ export function StructureHistoryView({ structureRef, onOpenOffset }: { structure
         <div className="panel-body">
           {history.observations.map((o) => (
             <div key={o.offsetId} className="hist-row">
-              <span className="mono">{o.level} {o.workplace}</span>
+              <span className="mono">{o.section} · {o.workplace}</span>
               <span className="num mono" style={{ color: 'var(--observed)' }}>
                 {o.apparentOffset} {o.unit.toLowerCase()}
               </span>
@@ -58,7 +58,7 @@ export function StructureHistoryView({ structureRef, onOpenOffset }: { structure
           <thead>
             <tr>
               <th>Record</th>
-              <th>Level</th>
+              <th>Section</th>
               <th>Workplace</th>
               <th>Date</th>
               <th>Technician</th>
@@ -73,7 +73,7 @@ export function StructureHistoryView({ structureRef, onOpenOffset }: { structure
             {history.observations.map((o) => (
               <tr key={o.offsetId} data-clickable="true" onClick={() => onOpenOffset(o.offsetId)}>
                 <td className="mono">{o.recordId}</td>
-                <td>{o.level}</td>
+                <td>{o.section}</td>
                 <td>{o.workplace}</td>
                 <td className="small">{fmtDate(o.date)}</td>
                 <td>{o.technician}</td>
@@ -122,7 +122,7 @@ export function SearchView({ onOpenLog, onOpenOffset }: { onOpenLog: (id: string
     <>
       <h1 className="page-title">Search</h1>
       <p className="page-sub">
-        Record identifiers are looked up exactly. Everything else is read as a question — try <code>faults &gt; 2m level L12</code>.
+        Record identifiers are looked up exactly. Everything else is read as a question — try <code>faults &gt; 2m section 12 South</code>.
       </p>
 
       <div className="row" style={{ marginBottom: 18 }}>
@@ -132,7 +132,7 @@ export function SearchView({ onOpenLog, onOpenOffset }: { onOpenLog: (id: string
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void run(query)}
-          placeholder="UNK-OFS-2026-000012, or faults > 2m level L12"
+          placeholder="UNK-OFS-2026-000012, or faults > 2m section 12 South"
         />
         <button className="btn btn-primary" disabled={busy} onClick={() => void run(query)}>
           Search
@@ -167,7 +167,7 @@ export function SearchView({ onOpenLog, onOpenOffset }: { onOpenLog: (id: string
                       <td className="mono">{o.recordId}</td>
                       <td>{o.structure?.structureType}</td>
                       <td>
-                        {o.structure?.observation?.faceLog?.workplace?.section?.level?.code} /{' '}
+                        {o.structure?.observation?.faceLog?.workplace?.section?.code} ·{' '}
                         {o.structure?.observation?.faceLog?.workplace?.code}
                       </td>
                       <td className="num" style={{ color: 'var(--observed)' }}>

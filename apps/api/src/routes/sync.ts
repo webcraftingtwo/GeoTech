@@ -357,11 +357,11 @@ export default async function syncRoutes(app: FastifyInstance, opts: { env: Env 
       loadValidationConfig(),
       prisma.mine.findMany({
         where: { active: true },
-        include: { levels: { where: { active: true }, include: { sections: { where: { active: true } } } } },
+        include: { sections: { where: { active: true } } },
       }),
       prisma.workplace.findMany({
         where: { active: true },
-        include: { section: { include: { level: { include: { mine: true } } } } },
+        include: { section: { include: { mine: true } } },
         orderBy: { code: 'asc' },
       }),
     ]);
@@ -377,14 +377,15 @@ export default async function syncRoutes(app: FastifyInstance, opts: { env: Env 
         code: w.code,
         name: w.name,
         workplaceType: w.workplaceType,
-        panel: w.panel,
+        bord: w.bord,
+        strikeBelt: w.strikeBelt,
         drive: w.drive,
         stope: w.stope,
         face: w.face,
         sectionId: w.sectionId,
         sectionCode: w.section.code,
-        levelCode: w.section.level.code,
-        mineCode: w.section.level.mine.code,
+        sectionName: w.section.name,
+        mineCode: w.section.mine.code,
       })),
     };
   });

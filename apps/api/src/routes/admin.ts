@@ -206,7 +206,7 @@ export default async function adminRoutes(app: FastifyInstance) {
   app.get('/workplaces', { preHandler: [app.authenticate] }, async () =>
     prisma.workplace.findMany({
       where: { active: true },
-      include: { section: { include: { level: { include: { mine: true } } } } },
+      include: { section: { include: { mine: true } } },
       orderBy: { code: 'asc' },
     }),
   );
@@ -218,7 +218,8 @@ export default async function adminRoutes(app: FastifyInstance) {
         code: z.string().min(1),
         name: z.string().min(1),
         workplaceType: z.string().min(1),
-        panel: z.string().optional(),
+        bord: z.string().optional(),
+        strikeBelt: z.string().optional(),
         drive: z.string().optional(),
         stope: z.string().optional(),
         face: z.string().optional(),

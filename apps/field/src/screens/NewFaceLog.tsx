@@ -51,7 +51,7 @@ export function NewFaceLogScreen() {
   );
 
   const [workplaceId, setWorkplaceId] = useState<string | null>(null);
-  const [levelCode, setLevelCode] = useState<string | null>(null);
+  const [sectionCode, setSectionCode] = useState<string | null>(null);
   const [shift, setShift] = useState<string | null>(null);
   const [surveyReference, setSurveyReference] = useState('');
   const [faceAdvance, setFaceAdvance] = useState('');
@@ -70,13 +70,16 @@ export function NewFaceLogScreen() {
   const observationOptions = useOptions('observation_type');
   const methodOptions = useOptions('location_method');
 
-  const levels = useMemo(
-    () => [...new Set(reference.workplaces.map((w) => w.levelCode))].sort(),
-    [reference.workplaces],
-  );
-  const workplacesOnLevel = useMemo(
-    () => reference.workplaces.filter((w) => !levelCode || w.levelCode === levelCode),
-    [reference.workplaces, levelCode],
+  /** Sections, in the order a technician would read them: 11S, 12N, 12S. */
+  const sections = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const w of reference.workplaces) seen.set(w.sectionCode, w.sectionName ?? w.sectionCode);
+    return [...seen.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [reference.workplaces]);
+
+  const workplacesInSection = useMemo(
+    () => reference.workplaces.filter((w) => !sectionCode || w.sectionCode === sectionCode),
+    [reference.workplaces, sectionCode],
   );
 
   const draft: Partial<FaceLog> = {
@@ -210,10 +213,21 @@ export function NewFaceLogScreen() {
 
         {step === 0 && (
           <div className="stack">
-            <ChipGroup label="Level" options={levels.map((l) => ({ code: l, label: l }))} value={levelCode} onChange={setLevelCode} />
             <ChipGroup
-              label="Working place"
-              options={workplacesOnLevel.map((w) => ({ code: w.id, label: `${w.code} · ${w.name}` }))}
+              label="Section"
+              options={sections.map(([code, name]) => ({ code, label: name }))}
+              value={sectionCode}
+              onChange={(code) => {
+                setSectionCode(code);
+                setWorkplaceId(null);
+              }}
+            />
+            <ChipGroup
+              label="Bord or working place"
+              options={workplacesInSection.map((w) => ({
+                code: w.id,
+                label: w.bord ? `Bord ${w.bord}` : w.name,
+              }))}
               value={workplaceId}
               onChange={setWorkplaceId}
             />

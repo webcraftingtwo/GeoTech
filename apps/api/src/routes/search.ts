@@ -18,8 +18,16 @@ interface ParsedQuery {
   structureType?: string;
   minOffset?: number;
   maxOffset?: number;
-  levelCode?: string;
+  sectionCode?: string;
   recordId?: string;
+}
+
+/** "12 south", "12S" and "12  South" all mean section 12S. */
+export function normaliseSection(raw: string): string {
+  const cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+  const m = /^(\d{1,2})\s*(north|south|east|west|n|s|e|w)$/.exec(cleaned);
+  if (m) return `${m[1]}${m[2]![0]!.toUpperCase()}`;
+  return cleaned.toUpperCase();
 }
 
 const STRUCTURE_WORDS: Record<string, string> = {
@@ -55,8 +63,15 @@ export function parseQuery(raw: string): ParsedQuery {
   const lt = /(?:<|less than|under)\s*([\d.]+)\s*m?/.exec(lower);
   if (lt) q.maxOffset = Number(lt[1]);
 
-  const level = /\blevel\s*([\w-]+)/.exec(lower);
-  if (level) q.levelCode = level[1]!.toUpperCase();
+  // Unki organises by section, not level: "12 South", "12S". Both the word
+  // "section" and a bare section code are accepted, because a geologist
+  // types what they say underground.
+  const section = /\bsection\s*([\w-]+(?:\s+(?:north|south|east|west))?)/.exec(lower);
+  if (section) q.sectionCode = normaliseSection(section[1]!);
+  else {
+    const bare = /\b(\d{1,2}\s*(?:north|south|east|west|n|s|e|w))\b/.exec(lower);
+    if (bare) q.sectionCode = normaliseSection(bare[1]!);
+  }
 
   return q;
 }
@@ -91,9 +106,9 @@ export default async function searchRoutes(app: FastifyInstance) {
             { workplace: { code: { contains: text, mode: 'insensitive' } } },
             { technician: { name: { contains: text, mode: 'insensitive' } } },
           ],
-          ...(parsed.levelCode ? { workplace: { section: { level: { code: parsed.levelCode } } } } : {}),
+          ...(parsed.sectionCode ? { workplace: { section: { code: parsed.sectionCode } } } : {}),
         },
-        include: { workplace: { include: { section: { include: { level: true } } } }, technician: { select: { name: true } } },
+        include: { workplace: { include: { section: true } }, technician: { select: { name: true } } },
         take,
       }),
       prisma.offset.findMany({
@@ -107,10 +122,10 @@ export default async function searchRoutes(app: FastifyInstance) {
                 },
               }
             : {}),
-          ...(parsed.levelCode
-            ? { structure: { observation: { faceLog: { workplace: { section: { level: { code: parsed.levelCode } } } } } } }
+          ...(parsed.sectionCode
+            ? { structure: { observation: { faceLog: { workplace: { section: { code: parsed.sectionCode } } } } } }
             : {}),
-          ...(!parsed.structureType && parsed.minOffset === undefined && parsed.maxOffset === undefined && !parsed.levelCode
+          ...(!parsed.structureType && parsed.minOffset === undefined && parsed.maxOffset === undefined && !parsed.sectionCode
             ? { OR: [{ recordId: { contains: text, mode: 'insensitive' } }, { markerRef: { contains: text, mode: 'insensitive' } }] }
             : {}),
         },
@@ -118,7 +133,7 @@ export default async function searchRoutes(app: FastifyInstance) {
           structure: {
             include: {
               observation: {
-                include: { faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } } },
+                include: { faceLog: { include: { workplace: { include: { section: true } } } } },
               },
             },
           },

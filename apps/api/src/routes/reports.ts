@@ -64,7 +64,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const faceLogs = await prisma.faceLog.findMany({
       where: { shiftDate: { gte: start, lt: end } },
       include: {
-        workplace: { include: { section: { include: { level: true } } } },
+        workplace: { include: { section: true } },
         technician: { select: { name: true, employeeNo: true } },
         observations: { include: { structures: { include: { offsets: true } } } },
         samples: true,
@@ -84,7 +84,7 @@ export default async function reportRoutes(app: FastifyInstance) {
               recordId: log.recordId,
               date: log.shiftDate.toISOString().slice(0, 10),
               shift: log.shift,
-              level: log.workplace.section.level.code,
+              level: log.workplace.section.code,
               workplace: log.workplace.code,
               technician: log.technician.name,
               observation: obs.observationType,
@@ -100,7 +100,7 @@ export default async function reportRoutes(app: FastifyInstance) {
           recordId: o.recordId,
           date: log.shiftDate.toISOString().slice(0, 10),
           shift: log.shift,
-          level: log.workplace.section.level.code,
+          level: log.workplace.section.code,
           workplace: log.workplace.code,
           technician: log.technician.name,
           observation: obs.observationType,
@@ -150,7 +150,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       prisma.faceLog.findMany({
         where: { shiftDate: { gte: start, lt: end }, ...(q.shift ? { shift: q.shift } : {}) },
         include: {
-          workplace: { include: { section: { include: { level: true } } } },
+          workplace: { include: { section: true } },
           technician: { select: { name: true } },
           observations: { include: { structures: { include: { offsets: true } } } },
         },
@@ -169,7 +169,7 @@ export default async function reportRoutes(app: FastifyInstance) {
           o.structures.flatMap((s) =>
             s.offsets.map((off) => ({
               recordId: off.recordId,
-              workplace: `${l.workplace.section.level.code} / ${l.workplace.code}`,
+              workplace: `${l.workplace.section.code} / ${l.workplace.code}`,
               structureType: s.structureType,
               apparentOffset: off.apparentOffset,
               unit: off.unit,
@@ -195,7 +195,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       generatedAt: new Date().toISOString(),
       keyObservations: faceLogs.map((l) => ({
         recordId: l.recordId,
-        workplace: `${l.workplace.section.level.code} / ${l.workplace.code}`,
+        workplace: `${l.workplace.section.code} / ${l.workplace.code}`,
         technician: l.technician.name,
         observations: l.observations.length,
         status: l.status,
@@ -228,7 +228,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       include: {
         offsets: true,
         observation: {
-          include: { faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } } },
+          include: { faceLog: { include: { workplace: { include: { section: true } } } } },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -241,7 +241,7 @@ export default async function reportRoutes(app: FastifyInstance) {
         recordId: s.recordId,
         structureRef: s.structureRef ?? '',
         structureType: s.structureType,
-        level: s.observation.faceLog.workplace.section.level.code,
+        level: s.observation.faceLog.workplace.section.code,
         workplace: s.observation.faceLog.workplace.code,
         strike: s.strike ?? '',
         dip: s.dip ?? '',
@@ -275,7 +275,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const samples = await prisma.sample.findMany({
       where,
       include: {
-        faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } },
+        faceLog: { include: { workplace: { include: { section: true } } } },
         collectedBy: { select: { name: true } },
       },
       orderBy: { collectedAt: 'desc' },
@@ -285,7 +285,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const rows = samples.map((s) => ({
       sampleNumber: s.sampleNumber,
       sampleType: s.sampleType,
-      level: s.faceLog.workplace.section.level.code,
+      level: s.faceLog.workplace.section.code,
       workplace: s.faceLog.workplace.code,
       fromPosition: s.fromPosition ?? '',
       toPosition: s.toPosition ?? '',

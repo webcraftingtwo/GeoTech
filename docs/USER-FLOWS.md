@@ -53,7 +53,7 @@ Progressive disclosure, seven short steps rather than one long form:
 
 | Step | Question | Input style |
 | --- | --- | --- |
-| 1 | Where are you? | Hierarchy pickers, defaulted to last workplace |
+| 1 | Where are you? | Section then bord, defaulted to last workplace |
 | 2 | Shift details | Auto: date, shift, technician, start time |
 | 3 | Location | Survey station + tape distance; easting/northing optional |
 | 4 | Photograph the face | Camera, multiple shots, rotate/crop/annotate |
@@ -114,15 +114,15 @@ rewrite.
 
 ## Flow 5 — Geologist: structure history (§23)
 
-Select a structure (e.g. `F-012`) → every observation of it across levels, dates and
-technicians, listed and plotted:
+Select a structure (e.g. `F-012`) → every observation of it across sections, dates
+and technicians, listed and plotted:
 
 ```
-FAULT F-012          apparent offset by level
-  Level A  2.1 m  ▓▓▓▓▓▓▓▓▓▓░░░░
-  Level B  2.3 m  ▓▓▓▓▓▓▓▓▓▓▓░░░
-  Level C  2.5 m  ▓▓▓▓▓▓▓▓▓▓▓▓░░
-  Level D  2.4 m  ▓▓▓▓▓▓▓▓▓▓▓▓░░
+FAULT F-012          apparent offset by working place
+  12S bord 3   2.1 m  ▓▓▓▓▓▓▓▓▓▓░░░░
+  12S bord 4   2.3 m  ▓▓▓▓▓▓▓▓▓▓▓░░░
+  12S bord 5   2.5 m  ▓▓▓▓▓▓▓▓▓▓▓▓░░
+  12N bord 2   2.4 m  ▓▓▓▓▓▓▓▓▓▓▓▓░░
 ```
 
 Each row opens the full record: photographs, orientation, technician's observation

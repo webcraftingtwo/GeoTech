@@ -149,18 +149,23 @@ export interface FieldNotification {
   createdAt: string;
 }
 
+/**
+ * A working place as Unki organises them: a section such as "12 South"
+ * containing numbered bords (UNKI-MIN-MRM-STD-201 §9.1). No level.
+ */
 export interface ReferenceWorkplace {
   id: string;
   code: string;
   name: string;
   workplaceType: string;
-  panel?: string | null;
+  bord?: string | null;
+  strikeBelt?: string | null;
   drive?: string | null;
   stope?: string | null;
   face?: string | null;
   sectionId: string;
   sectionCode: string;
-  levelCode: string;
+  sectionName?: string;
   mineCode: string;
 }
 

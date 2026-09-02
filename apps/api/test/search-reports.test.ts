@@ -21,17 +21,18 @@ beforeEach(async () => {
 
 describe('search query parsing (§27)', () => {
   it('reads a geological question into structured filters', () => {
-    expect(parseQuery('faults > 2m level L12')).toMatchObject({
+    expect(parseQuery('faults > 2m section 12 South')).toMatchObject({
       structureType: 'FAULT',
       minOffset: 2,
-      levelCode: 'L12',
+      sectionCode: '12S',
     });
   });
 
   it('understands the words a geologist would actually type', () => {
     expect(parseQuery('dykes greater than 1.5 m')).toMatchObject({ structureType: 'DYKE', minOffset: 1.5 });
     expect(parseQuery('shears under 0.5m')).toMatchObject({ structureType: 'SHEAR', maxOffset: 0.5 });
-    expect(parseQuery('joints on level 10')).toMatchObject({ structureType: 'JOINT', levelCode: '10' });
+    expect(parseQuery('joints in 12 north')).toMatchObject({ structureType: 'JOINT', sectionCode: '12N' });
+    expect(parseQuery('shears in section 11S')).toMatchObject({ sectionCode: '11S' });
   });
 
   it('treats a record identifier as an exact lookup, not a search', () => {
@@ -111,7 +112,7 @@ describe('search endpoint (§27)', () => {
   it('finds faults above a threshold and excludes those below it', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/v1/search?q=' + encodeURIComponent('faults > 2m level L12'),
+      url: '/api/v1/search?q=' + encodeURIComponent('faults > 2m section 12S'),
       headers: auth(fx.geologist.token),
     });
     const body = res.json();
@@ -122,7 +123,7 @@ describe('search endpoint (§27)', () => {
   it('returns nothing for a level with no such structures', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/v1/search?q=' + encodeURIComponent('faults > 2m level L99'),
+      url: '/api/v1/search?q=' + encodeURIComponent('faults > 2m section 99S'),
       headers: auth(fx.geologist.token),
     });
     expect(res.json().offsets).toHaveLength(0);

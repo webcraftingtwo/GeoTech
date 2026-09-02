@@ -6,39 +6,61 @@ import { db, type StoredSession } from './db/database.js';
  * Standalone deployment: everything the networked build fetches from the
  * server, provided locally instead.
  *
- * The reference data below is the neutral placeholder set. It exists so the
- * application is usable out of the box; it is **not** Unki geological
- * terminology. A mine replaces it by importing its own reference file in
+ * The geological terminology follows UNKI-MIN-MRM-STD-201 (BMSZ Marking & Face
+ * Measurements). The section and bord codes below are examples, not a real mine
+ * layout. Both are replaced by importing the mine's own reference file in
  * Settings, which is the standalone equivalent of the administration panel.
  */
 
 /**
- * A generic hierarchy so a device is never unusable on first run. Codes are
- * deliberately obvious placeholders — nobody should mistake them for a real
- * mine layout.
+ * Sections and bords so a device is usable on first run.
+ *
+ * Shaped the way Unki organises work — a section such as "12 South" with
+ * numbered bords and a strike belt (UNKI-MIN-MRM-STD-201 §9.1) — but the codes
+ * are examples. A mine loads its own list in Settings.
  */
 function seedWorkplaces(): ReferenceWorkplace[] {
+  const sections = [
+    { code: '12S', name: '12 South', bords: 9 },
+    { code: '12N', name: '12 North', bords: 9 },
+    { code: '11S', name: '11 South', bords: 6 },
+  ];
+
   const workplaces: ReferenceWorkplace[] = [];
-  for (const level of ['L1', 'L2', 'L3']) {
-    for (const section of ['N', 'S']) {
-      for (const panel of [1, 2, 3, 4]) {
-        const code = `${level}${section}P${panel}`;
-        workplaces.push({
-          id: code,
-          code,
-          name: `${level} ${section} panel ${panel} (example)`,
-          workplaceType: 'PANEL',
-          panel: `P${panel}`,
-          drive: null,
-          stope: null,
-          face: null,
-          sectionId: `${level}${section}`,
-          sectionCode: section,
-          levelCode: level,
-          mineCode: 'EXAMPLE',
-        });
-      }
+  for (const section of sections) {
+    for (let bord = 1; bord <= section.bords; bord++) {
+      const code = `${section.code}-B${bord}`;
+      workplaces.push({
+        id: code,
+        code,
+        name: `${section.name} bord ${bord}`,
+        workplaceType: 'BORD',
+        bord: String(bord),
+        strikeBelt: null,
+        drive: null,
+        stope: null,
+        face: null,
+        sectionId: section.code,
+        sectionCode: section.code,
+        sectionName: section.name,
+        mineCode: 'EXAMPLE',
+      });
     }
+    workplaces.push({
+      id: `${section.code}-SB`,
+      code: `${section.code}-SB`,
+      name: `${section.name} strike belt`,
+      workplaceType: 'STRIKE_BELT',
+      bord: null,
+      strikeBelt: section.code,
+      drive: null,
+      stope: null,
+      face: null,
+      sectionId: section.code,
+      sectionCode: section.code,
+      sectionName: section.name,
+      mineCode: 'EXAMPLE',
+    });
   }
   return workplaces;
 }

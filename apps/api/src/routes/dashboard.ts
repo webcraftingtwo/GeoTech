@@ -49,7 +49,7 @@ export default async function dashboardRoutes(app: FastifyInstance) {
               include: {
                 faceLog: {
                   include: {
-                    workplace: { include: { section: { include: { level: true } } } },
+                    workplace: { include: { section: true } },
                     technician: { select: { name: true } },
                   },
                 },
@@ -67,7 +67,7 @@ export default async function dashboardRoutes(app: FastifyInstance) {
       return {
         id: o.id,
         recordId: o.recordId,
-        workplace: `${faceLog.workplace.section.level.code} / ${faceLog.workplace.code}`,
+        workplace: `${faceLog.workplace.section.code} / ${faceLog.workplace.code}`,
         type: o.structure.structureType,
         observation: `${o.apparentOffset} ${o.unit.toLowerCase()} offset`,
         technician: faceLog.technician.name,

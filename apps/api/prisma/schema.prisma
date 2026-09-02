@@ -178,53 +178,54 @@ model RefreshToken {
 
 /* ── mine hierarchy ─────────────────────────────────────────────────── */
 
+/// Mine hierarchy as Unki actually works (UNKI-MIN-MRM-STD-201).
+///
+/// There is no level in this hierarchy. Unki organises underground work by
+/// **section** — the standard defines a section as "an area of responsibility
+/// allocated to a specific person" — and a section contains numbered **bords**,
+/// e.g. section "12 South", bords 1 to 9. A geological technician is
+/// responsible for two half levels of six bords and a strike belt (§9.1), so
+/// "half level" describes a technician's beat rather than a place a face
+/// belongs to.
 model Mine {
   id     String  @id @default(uuid())
   code   String  @unique
   name   String
   active Boolean @default(true)
 
-  levels Level[]
+  sections Section[]
 
   @@map("mines")
 }
 
-model Level {
+model Section {
   id     String  @id @default(uuid())
   mineId String
+  /// As spoken and written underground, e.g. "12S".
   code   String
+  /// The full name, e.g. "12 South".
   name   String
   active Boolean @default(true)
 
-  mine     Mine      @relation(fields: [mineId], references: [id])
-  sections Section[]
-
-  @@unique([mineId, code])
-  @@map("levels")
-}
-
-model Section {
-  id      String  @id @default(uuid())
-  levelId String
-  code    String
-  name    String
-  active  Boolean @default(true)
-
-  level      Level       @relation(fields: [levelId], references: [id])
+  mine       Mine        @relation(fields: [mineId], references: [id])
   workplaces Workplace[]
 
-  @@unique([levelId, code])
+  @@unique([mineId, code])
   @@map("sections")
 }
 
 model Workplace {
   id            String  @id @default(uuid())
   sectionId     String
+  /// e.g. "12S-B4" — the section code and the bord number.
   code          String
   name          String
-  // Reference code from the `workplace_type` list, not an enum.
+  /// Reference code from the `workplace_type` list, not an enum: bord, strike
+  /// belt, end, raise, decline. Configurable per mine.
   workplaceType String
-  panel         String?
+  /// Bord number within the section, where the workplace is a bord.
+  bord          String?
+  strikeBelt    String?
   drive         String?
   stope         String?
   face          String?
