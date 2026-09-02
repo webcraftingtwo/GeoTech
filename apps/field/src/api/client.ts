@@ -171,6 +171,12 @@ export interface ReferenceWorkplace {
 
 export interface ReferenceBundle {
   fetchedAt: string;
+  /**
+   * Standalone only: which build's built-in list this is. Absent on a bundle
+   * that came from a server or was imported by the mine, so those are never
+   * overwritten by an application update.
+   */
+  seedVersion?: number;
   convention: import('@geotech/core').MeasurementConvention;
   referenceLists: import('@geotech/core').RefList[];
   validationRules: import('@geotech/core').ConfigurableRule[];

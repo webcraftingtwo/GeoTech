@@ -47,9 +47,9 @@ async function main() {
     update: DEFAULT_CONVENTION,
   });
 
-  // Mine hierarchy as Unki works it: sections such as "12 South", each with
-  // numbered bords and a strike belt (UNKI-MIN-MRM-STD-201 §9.1). There is no
-  // level in this hierarchy.
+  // Mine hierarchy as Unki works it: a working place is named by its section
+  // and bord — "14 South bord 5" — with a strike belt per section
+  // (UNKI-MIN-MRM-STD-201 §9.1). There is no level in this hierarchy.
   console.log('Seeding mine hierarchy…');
   const mine = await prisma.mine.upsert({
     where: { code: 'UNKI' },
@@ -58,9 +58,14 @@ async function main() {
   });
 
   const sections = [
-    { code: '12S', name: '12 South', bords: 9 },
+    { code: '11N', name: '11 North', bords: 9 },
+    { code: '11S', name: '11 South', bords: 9 },
     { code: '12N', name: '12 North', bords: 9 },
-    { code: '11S', name: '11 South', bords: 6 },
+    { code: '12S', name: '12 South', bords: 9 },
+    { code: '13N', name: '13 North', bords: 9 },
+    { code: '13S', name: '13 South', bords: 9 },
+    { code: '14N', name: '14 North', bords: 9 },
+    { code: '14S', name: '14 South', bords: 9 },
   ];
 
   const workplaces: { id: string; code: string }[] = [];
