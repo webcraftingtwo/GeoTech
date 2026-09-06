@@ -44,17 +44,21 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     description: 'Top-level classification of a geological observation (§10).',
     mineSpecific: true,
     items: [
-      item('REEF', 'Reef', 10),
-      item('HANGINGWALL', 'Hangingwall', 20),
-      item('FOOTWALL', 'Footwall', 30),
-      item('FAULT', 'Fault', 40),
-      item('DYKE', 'Dyke', 50),
+      item('BMSZ', 'BMSZ (base of the Main Sulphide Zone)', 10),
+      item('REEF', 'Reef', 20),
+      item('HANGINGWALL', 'Hangingwall', 30),
+      item('FOOTWALL', 'Footwall', 40),
+      item('FAULT', 'Fault', 50),
       item('SHEAR', 'Shear', 60),
-      item('JOINT', 'Joint', 70),
-      item('VEIN', 'Vein', 80),
-      item('CONTACT', 'Contact', 90),
-      item('FRACTURE', 'Fracture', 100),
-      item('GROUND_CONDITION', 'Ground condition', 110),
+      item('DYKE', 'Dyke', 70),
+      item('SILL', 'Sill', 80),
+      item('VEIN', 'Vein', 90),
+      item('JOINT', 'Joint', 100),
+      item('CONTACT', 'Contact', 110),
+      item('FRACTURE', 'Fracture', 120),
+      item('XENOLITH', 'Xenolith', 130),
+      item('REPLACEMENT_PEGMATITE', 'Replacement pegmatite', 140),
+      item('GROUND_CONDITION', 'Ground condition', 150),
       item('OTHER', 'Other', 999),
     ],
   },
@@ -64,19 +68,29 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     description: 'Structural feature types available for measurement (§14).',
     mineSpecific: true,
     items: [
+      // A fault has observable displacement; a shear is closely spaced
+      // jointing from tangential stress. The standard is emphatic that the two
+      // must be distinguished (STD-201 §9.3).
       item('FAULT', 'Fault', 10, { fields: ['strike', 'dip', 'dipDirection', 'width', 'infill', 'condition'] }),
-      item('JOINT', 'Joint', 20, { fields: ['strike', 'dip', 'dipDirection', 'spacing', 'persistence', 'aperture', 'condition'] }),
-      item('DYKE', 'Dyke', 30, { fields: ['strike', 'dip', 'dipDirection', 'width', 'composition'] }),
-      item('SHEAR', 'Shear', 40, { fields: ['strike', 'dip', 'dipDirection', 'width', 'intensity'] }),
+      item('SHEAR', 'Shear', 20, { fields: ['strike', 'dip', 'dipDirection', 'width', 'intensity'] }),
+      item('THRUST', 'Thrust (fault parallel to layering)', 30, { fields: ['strike', 'dip', 'dipDirection', 'width'] }),
+      item('JOINT', 'Joint', 40, { fields: ['strike', 'dip', 'dipDirection', 'spacing', 'persistence', 'aperture', 'condition'] }),
+      item('DYKE', 'Dyke', 50, { fields: ['strike', 'dip', 'dipDirection', 'width', 'composition'] }),
+      item('SILL', 'Sill', 60, { fields: ['strike', 'dip', 'dipDirection', 'width', 'composition'] }),
+      item('VEIN', 'Vein', 70, { fields: ['strike', 'dip', 'dipDirection', 'width', 'composition'] }),
       item('OTHER', 'Other', 999, { fields: ['strike', 'dip', 'dipDirection'] }),
     ],
   },
   {
     code: 'reef_name',
     name: 'Reef name',
-    description: 'Mine-approved reef horizons. MUST be configured before production use.',
+    description: 'Reef horizons. Confirm against the mine geological standard before production use.',
     mineSpecific: true,
-    items: [item('REEF_A', 'Reef horizon A (placeholder)', 10), item('REEF_B', 'Reef horizon B (placeholder)', 20)],
+    items: [
+      item('MSZ', 'Main Sulphide Zone (MSZ)', 10),
+      item('BMSZ', 'Base of the Main Sulphide Zone (BMSZ)', 20),
+      item('OTHER', 'Other', 999),
+    ],
   },
   {
     code: 'lithology',
@@ -85,11 +99,15 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     mineSpecific: true,
     items: [
       item('PYROXENITE', 'Pyroxenite', 10),
-      item('NORITE', 'Norite', 20),
-      item('ANORTHOSITE', 'Anorthosite', 30),
-      item('GABBRO', 'Gabbro', 40),
-      item('CHROMITITE', 'Chromitite', 50),
-      item('PEGMATOID', 'Pegmatoid', 60),
+      item('PLAGIOCLASE_PYROXENITE', 'Plagioclase pyroxenite', 20),
+      item('NORITE', 'Norite', 30),
+      item('ANORTHOSITE', 'Anorthosite', 40),
+      item('GABBRO', 'Gabbro', 50),
+      item('CHROMITITE', 'Chromitite', 60),
+      // Replaces the reef and is PGE barren at Unki (STD-201 §3.0).
+      item('REPLACEMENT_PEGMATITE', 'Replacement pegmatite', 70),
+      item('XENOLITH', 'Xenolith', 80),
+      item('AUTOLITH', 'Autolith', 90),
       item('OTHER', 'Other', 999),
     ],
   },
@@ -113,10 +131,11 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     description: 'Geological marker whose displacement was measured (§12 step 2).',
     mineSpecific: true,
     items: [
-      item('REEF', 'Reef', 10),
-      item('REEF_CONTACT', 'Reef contact', 20),
-      item('GEOLOGICAL_CONTACT', 'Geological contact', 30),
-      item('DYKE', 'Dyke', 40),
+      item('BMSZ', 'BMSZ', 10),
+      item('REEF', 'Reef', 20),
+      item('REEF_CONTACT', 'Reef contact', 30),
+      item('GEOLOGICAL_CONTACT', 'Geological contact', 40),
+      item('DYKE', 'Dyke', 50),
       item('OTHER', 'Other marker', 999),
     ],
   },
@@ -135,6 +154,38 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     ],
   },
   {
+    code: 'face_limit_set',
+    name: 'Face mining-cut limits',
+    description:
+      'BMSZ-to-hangingwall and BMSZ-to-footwall limits applied to a face (§9.8), in centimetres. Revised only under Chief Geologist authorisation; the applied values are stored on each measurement so a revision never reinterprets a historical face.',
+    mineSpecific: true,
+    items: [
+      item('BORD', 'Bord / ledging decline', 10, { hangingwall: 45, footwall: -135 }),
+      item('DECLINE', 'Decline', 20, { hangingwall: 150, footwall: -100 }),
+    ],
+  },
+  {
+    code: 'face_breach_reason',
+    name: 'Face limit breach reason',
+    description: 'Why a station sits outside the mining-cut limits. Required on every breaching station.',
+    mineSpecific: true,
+    items: [
+      item('BLAST_OVERBREAK', 'Blast over-break', 10),
+      item('GROUND_CONDITIONS', 'Ground conditions', 20),
+      item('BMSZ_UNCERTAIN', 'BMSZ position uncertain', 30),
+      item('SUPPORT_INSTALLED', 'Support installed', 40),
+      item('GEOLOGICAL_STRUCTURE', 'Geological structure', 50),
+      item('OTHER', 'Other — see notes', 999),
+    ],
+  },
+  {
+    code: 'face_measurement_method',
+    name: 'Face measurement method',
+    description: 'Instrument used for the tape offsets (§9.8.v).',
+    mineSpecific: false,
+    items: [item('DISTOMETER', 'Distometer', 10), item('TAPE_5M', '5 m tape measure', 20)],
+  },
+  {
     code: 'measurement_method',
     name: 'Measurement method',
     description: 'How the offset measurement was obtained.',
@@ -151,7 +202,14 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     name: 'Sample type',
     description: 'Sampling method (§16).',
     mineSpecific: true,
-    items: [item('CHIP', 'Chip', 10), item('CHANNEL', 'Channel', 20), item('GRAB', 'Grab', 30), item('CORE', 'Core', 40), item('OTHER', 'Other', 999)],
+    items: [
+      item('CHANNEL', 'Channel', 10),
+      item('CHIP', 'Chip', 20),
+      item('GRAB', 'Grab', 30),
+      item('CORE', 'Core', 40),
+      item('XRF', 'Handheld XRF reading', 50),
+      item('OTHER', 'Other', 999),
+    ],
   },
   {
     code: 'hazard_type',
@@ -200,14 +258,17 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
   {
     code: 'workplace_type',
     name: 'Workplace type',
-    description: 'Kind of underground working place (§7).',
+    description:
+      'Kind of underground working place. Unki mines bord-and-pillar: a section contains numbered bords and a strike belt (UNKI-MIN-MRM-STD-201 §9.1).',
     mineSpecific: true,
     items: [
-      item('PANEL', 'Panel', 10),
-      item('RAISE', 'Raise', 20),
-      item('DRIVE', 'Drive', 30),
-      item('STOPE', 'Stope', 40),
-      item('DEVELOPMENT_END', 'Development end', 50),
+      item('BORD', 'Bord', 10),
+      item('STRIKE_BELT', 'Strike belt', 20),
+      item('END', 'End', 30),
+      item('RAISE', 'Raise', 40),
+      item('DECLINE', 'Decline', 50),
+      item('LEDGING', 'Ledging', 60),
+      item('OTHER', 'Other', 999),
     ],
   },
   {
@@ -215,6 +276,7 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     name: 'Shift',
     description: 'Shift identifiers as used by the mine.',
     mineSpecific: true,
+    // Morning, afternoon or night — the shifts named in STD-201 §3.0.
     items: [item('MORNING', 'Morning', 10), item('AFTERNOON', 'Afternoon', 20), item('NIGHT', 'Night', 30)],
   },
   {
@@ -234,6 +296,19 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
       item('TAPE_FROM_PEG', 'Tape from last peg', 20),
       item('GPS', 'GPS (surface only)', 30),
       item('ESTIMATED', 'Estimated', 40),
+    ],
+  },
+  {
+    code: 'tarp_class',
+    name: 'TARP system class',
+    description:
+      'Trigger Action Response Plan class for the heading. Recorded on every face log.',
+    mineSpecific: true,
+    items: [
+      item('1', 'Class 1', 10),
+      item('2', 'Class 2', 20),
+      item('3', 'Class 3', 30),
+      item('S', 'Class S', 40),
     ],
   },
   {
@@ -287,7 +362,10 @@ export const DEFAULT_CONVENTION: MeasurementConvention = {
   allowNegativeOffset: false,
   strikeDipRule: 'RIGHT_HAND',
   strikeDipToleranceDeg: 15,
-  defaultUnit: 'M',
+  // Centimetres, at the Chief Geologist's instruction: it is what the
+  // technician reads off the tape, and a reading converted on entry is a
+  // reading that can be converted wrongly.
+  defaultUnit: 'CM',
   maxPlausibleWidthM: 50,
   maxPlausibleOffsetM: 100,
 };

@@ -1,21 +1,20 @@
 import { useEffect, useState } from 'react';
-import { isAdministrator, isReviewer, type Role } from '@geotech/core';
+import { type Role } from '@geotech/core';
 import { api, hasSession, setTokens } from './api.js';
-import { OverviewView } from './views/Overview.js';
-import { FaceLogView, OffsetView, ReviewQueueView } from './views/Review.js';
-import { AdminView, AuditView, ConflictsView, ReportsView, SearchView, StructureHistoryView } from './views/Tools.js';
+import { ManagementView } from './views/Management.js';
+import { ReportsView } from './views/Tools.js';
 
-type View =
-  | { name: 'overview' }
-  | { name: 'review' }
-  | { name: 'faceLog'; id: string }
-  | { name: 'offset'; id: string }
-  | { name: 'history'; structureRef: string }
-  | { name: 'search' }
-  | { name: 'reports' }
-  | { name: 'conflicts' }
-  | { name: 'audit' }
-  | { name: 'admin' };
+/**
+ * Two screens.
+ *
+ * The Chief Geologist cut the rest — overview, search, review queue, conflicts,
+ * audit trail and administration — on the grounds that the application should
+ * do one thing: get the offsets off the face and in front of the people who
+ * act on them. The server still holds the review and audit machinery and still
+ * enforces it; nothing here can reach it, which is a different thing from it
+ * not being there.
+ */
+type View = { name: 'management' } | { name: 'reports' };
 
 interface User {
   id: string;
@@ -26,13 +25,7 @@ interface User {
 export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
-  const [view, setView] = useState<View>({ name: 'overview' });
-  const [counts, setCounts] = useState<{ pendingReview: number; conflicts: number; openHazards: number }>({
-    pendingReview: 0,
-    conflicts: 0,
-    openHazards: 0,
-  });
-
+  const [view, setView] = useState<View>({ name: 'management' });
   useEffect(() => {
     if (!hasSession()) {
       setChecking(false);
@@ -45,20 +38,6 @@ export function App() {
       .finally(() => setChecking(false));
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    api
-      .overview()
-      .then((s) =>
-        setCounts({
-          pendingReview: Number(s['pendingReview'] ?? 0),
-          conflicts: Number(s['conflicts'] ?? 0),
-          openHazards: Number(s['openHazards'] ?? 0),
-        }),
-      )
-      .catch(() => undefined);
-  }, [user, view]);
-
   if (checking) return <div className="login-wrap">Loading…</div>;
   if (!user) return <LoginView onSignedIn={setUser} />;
 
@@ -70,29 +49,8 @@ export function App() {
         <div className="brand">UNKI GEOTECH</div>
         <div className="brand-name">Geology</div>
 
-        <NavItem label="Overview" active={view.name === 'overview'} onClick={() => go({ name: 'overview' })} />
-        {isReviewer(user.role) && (
-          <NavItem
-            label="Review queue"
-            count={counts.pendingReview}
-            tone={counts.pendingReview > 0 ? 'danger' : undefined}
-            active={view.name === 'review' || view.name === 'faceLog'}
-            onClick={() => go({ name: 'review' })}
-          />
-        )}
-        <NavItem label="Search" active={view.name === 'search'} onClick={() => go({ name: 'search' })} />
+        <NavItem label="Management" active={view.name === 'management'} onClick={() => go({ name: 'management' })} />
         <NavItem label="Reports" active={view.name === 'reports'} onClick={() => go({ name: 'reports' })} />
-        {isReviewer(user.role) && (
-          <NavItem
-            label="Conflicts"
-            count={counts.conflicts}
-            tone={counts.conflicts > 0 ? 'danger' : undefined}
-            active={view.name === 'conflicts'}
-            onClick={() => go({ name: 'conflicts' })}
-          />
-        )}
-        {isReviewer(user.role) && <NavItem label="Audit trail" active={view.name === 'audit'} onClick={() => go({ name: 'audit' })} />}
-        {isAdministrator(user.role) && <NavItem label="Administration" active={view.name === 'admin'} onClick={() => go({ name: 'admin' })} />}
 
         <div style={{ flex: 1 }} />
 
@@ -116,28 +74,8 @@ export function App() {
       </nav>
 
       <main className="main">
-        {view.name === 'overview' && <OverviewView onOpenOffset={(id) => go({ name: 'offset', id })} />}
-        {view.name === 'review' && <ReviewQueueView onOpenLog={(id) => go({ name: 'faceLog', id })} />}
-        {view.name === 'faceLog' && (
-          <FaceLogView id={view.id} onOpenOffset={(id) => go({ name: 'offset', id })} onBack={() => go({ name: 'review' })} />
-        )}
-        {view.name === 'offset' && (
-          <OffsetView
-            id={view.id}
-            onBack={() => go({ name: 'overview' })}
-            onOpenHistory={(structureRef) => go({ name: 'history', structureRef })}
-          />
-        )}
-        {view.name === 'history' && (
-          <StructureHistoryView structureRef={view.structureRef} onOpenOffset={(id) => go({ name: 'offset', id })} />
-        )}
-        {view.name === 'search' && (
-          <SearchView onOpenLog={(id) => go({ name: 'faceLog', id })} onOpenOffset={(id) => go({ name: 'offset', id })} />
-        )}
+        {view.name === 'management' && <ManagementView />}
         {view.name === 'reports' && <ReportsView />}
-        {view.name === 'conflicts' && <ConflictsView />}
-        {view.name === 'audit' && <AuditView />}
-        {view.name === 'admin' && <AdminView />}
       </main>
     </div>
   );

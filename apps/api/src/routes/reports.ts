@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { toAsciiDiagram } from '@geotech/core';
+import { MINING_HEIGHT_FLAG_CM, toAsciiDiagram, toMetres } from '@geotech/core';
 import { badRequest } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 
@@ -64,7 +64,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const faceLogs = await prisma.faceLog.findMany({
       where: { shiftDate: { gte: start, lt: end } },
       include: {
-        workplace: { include: { section: { include: { level: true } } } },
+        workplace: { include: { section: true } },
         technician: { select: { name: true, employeeNo: true } },
         observations: { include: { structures: { include: { offsets: true } } } },
         samples: true,
@@ -84,7 +84,7 @@ export default async function reportRoutes(app: FastifyInstance) {
               recordId: log.recordId,
               date: log.shiftDate.toISOString().slice(0, 10),
               shift: log.shift,
-              level: log.workplace.section.level.code,
+              level: log.workplace.section.code,
               workplace: log.workplace.code,
               technician: log.technician.name,
               observation: obs.observationType,
@@ -100,7 +100,7 @@ export default async function reportRoutes(app: FastifyInstance) {
           recordId: o.recordId,
           date: log.shiftDate.toISOString().slice(0, 10),
           shift: log.shift,
-          level: log.workplace.section.level.code,
+          level: log.workplace.section.code,
           workplace: log.workplace.code,
           technician: log.technician.name,
           observation: obs.observationType,
@@ -150,7 +150,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       prisma.faceLog.findMany({
         where: { shiftDate: { gte: start, lt: end }, ...(q.shift ? { shift: q.shift } : {}) },
         include: {
-          workplace: { include: { section: { include: { level: true } } } },
+          workplace: { include: { section: true } },
           technician: { select: { name: true } },
           observations: { include: { structures: { include: { offsets: true } } } },
         },
@@ -169,7 +169,7 @@ export default async function reportRoutes(app: FastifyInstance) {
           o.structures.flatMap((s) =>
             s.offsets.map((off) => ({
               recordId: off.recordId,
-              workplace: `${l.workplace.section.level.code} / ${l.workplace.code}`,
+              workplace: `${l.workplace.section.code} / ${l.workplace.code}`,
               structureType: s.structureType,
               apparentOffset: off.apparentOffset,
               unit: off.unit,
@@ -195,7 +195,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       generatedAt: new Date().toISOString(),
       keyObservations: faceLogs.map((l) => ({
         recordId: l.recordId,
-        workplace: `${l.workplace.section.level.code} / ${l.workplace.code}`,
+        workplace: `${l.workplace.section.code} / ${l.workplace.code}`,
         technician: l.technician.name,
         observations: l.observations.length,
         status: l.status,
@@ -228,7 +228,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       include: {
         offsets: true,
         observation: {
-          include: { faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } } },
+          include: { faceLog: { include: { workplace: { include: { section: true } } } } },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -241,7 +241,7 @@ export default async function reportRoutes(app: FastifyInstance) {
         recordId: s.recordId,
         structureRef: s.structureRef ?? '',
         structureType: s.structureType,
-        level: s.observation.faceLog.workplace.section.level.code,
+        level: s.observation.faceLog.workplace.section.code,
         workplace: s.observation.faceLog.workplace.code,
         strike: s.strike ?? '',
         dip: s.dip ?? '',
@@ -263,6 +263,72 @@ export default async function reportRoutes(app: FastifyInstance) {
     return { title: 'Geological Structure Report', generatedAt: new Date().toISOString(), rows };
   });
 
+  /* ── stope width control (§9.8.vii) ────────────────────────────────── */
+
+  /**
+   * Face measurements as width control expects them: one row per face, with
+   * the applied limits alongside the readings so a row can be judged on its
+   * own without looking up which limit set was in force that month.
+   */
+  app.get('/reports/width-control', { preHandler: [app.requireAction('report:generate')] }, async (request, reply) => {
+    const q = rangeQuery.parse(request.query);
+    const where =
+      q.from || q.to
+        ? { measuredAt: { ...(q.from ? { gte: new Date(q.from) } : {}), ...(q.to ? { lte: new Date(q.to) } : {}) } }
+        : {};
+
+    const measurements = await prisma.faceMeasurement.findMany({
+      where,
+      include: {
+        faceLog: { include: { workplace: { include: { section: true } } } },
+        measuredBy: { select: { name: true } },
+      },
+      orderBy: { measuredAt: 'desc' },
+      take: 1000,
+    });
+
+    const rows = measurements.map((m) => ({
+      recordId: m.recordId,
+      date: m.measuredAt.toISOString().slice(0, 10),
+      section: m.faceLog.workplace.section.name,
+      workplace: m.faceLog.workplace.code,
+      distanceFromPeg: m.distanceFromPeg ?? '',
+      faceLength: m.faceLength ?? '',
+      stationInterval: m.stationInterval,
+      limitSet: m.limitSetCode,
+      hangingwallLimit: m.limitHangingwall,
+      footwallLimit: m.limitFootwall,
+      stations: m.stationCount,
+      measured: m.measuredCount,
+      hangingwallBreaches: m.hangingwallBreaches,
+      footwallBreaches: m.footwallBreaches,
+      meanHangingwallOverbreakCm: m.meanHangingwallOverbreak ?? '',
+      meanHangingwallCm: m.meanHangingwall ?? '',
+      meanFootwallCm: m.meanFootwall ?? '',
+      meanMiningHeightCm: m.meanMiningHeight ?? '',
+      minMiningHeightCm: m.minMiningHeight ?? '',
+      maxMiningHeightCm: m.maxMiningHeight ?? '',
+      // Management reads metres; geology records centimetres. The conversion
+      // happens here, once, rather than in whoever opens the spreadsheet.
+      meanMiningHeightM: m.meanMiningHeight === null ? '' : toMetres(m.meanMiningHeight),
+      aboveFlagHeight: m.exceedsFlagHeight ? 'YES' : '',
+      measuredBy: m.measuredBy.name,
+    }));
+
+    if (q.format === 'csv') {
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header('content-disposition', 'attachment; filename="stope-width-control.csv"');
+      return toCsv(rows);
+    }
+    return {
+      title: 'Stope Width Control',
+      generatedAt: new Date().toISOString(),
+      basis: `Face measurements per UNKI-MIN-MRM-STD-201 §9.8, in centimetres. Limits shown are those applied when each face was measured. Faces above ${MINING_HEIGHT_FLAG_CM} cm mining height are marked.`,
+      count: rows.length,
+      rows,
+    };
+  });
+
   /* ── sampling report (§26) ─────────────────────────────────────────── */
 
   app.get('/reports/samples', { preHandler: [app.requireAction('report:generate')] }, async (request, reply) => {
@@ -275,7 +341,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const samples = await prisma.sample.findMany({
       where,
       include: {
-        faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } },
+        faceLog: { include: { workplace: { include: { section: true } } } },
         collectedBy: { select: { name: true } },
       },
       orderBy: { collectedAt: 'desc' },
@@ -285,7 +351,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     const rows = samples.map((s) => ({
       sampleNumber: s.sampleNumber,
       sampleType: s.sampleType,
-      level: s.faceLog.workplace.section.level.code,
+      level: s.faceLog.workplace.section.code,
       workplace: s.faceLog.workplace.code,
       fromPosition: s.fromPosition ?? '',
       toPosition: s.toPosition ?? '',

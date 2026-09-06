@@ -179,22 +179,22 @@ describe('sync ingest (§30, §49)', () => {
 
     // The device edits from version 1; meanwhile the server is already at 2.
     await sendBatch(fx.technician.token, 'batch-c2', [
-      { ...createOp('FACE_LOG', { ...payload, faceAdvance: 2.2 }), op: 'UPDATE', clientVersion: 2, baseVersion: 1 },
+      { ...createOp('FACE_LOG', { ...payload, chainage: 2.2 }), op: 'UPDATE', clientVersion: 2, baseVersion: 1 },
     ]);
 
     const conflicting = await sendBatch(fx.technician.token, 'batch-c3', [
-      { ...createOp('FACE_LOG', { ...payload, faceAdvance: 9.9 }), op: 'UPDATE', clientVersion: 3, baseVersion: 1 },
+      { ...createOp('FACE_LOG', { ...payload, chainage: 9.9 }), op: 'UPDATE', clientVersion: 3, baseVersion: 1 },
     ]);
 
     const result = conflicting.json().results[0];
     expect(result.status).toBe('CONFLICT');
-    expect(result.conflict.conflictingFields).toContain('faceAdvance');
-    expect(result.conflict.localVersion.faceAdvance).toBe(9.9);
-    expect(result.conflict.serverVersion.faceAdvance).toBe(2.2);
+    expect(result.conflict.conflictingFields).toContain('chainage');
+    expect(result.conflict.localVersion.chainage).toBe(9.9);
+    expect(result.conflict.serverVersion.chainage).toBe(2.2);
 
     // The server value is untouched by the conflicting attempt.
     const stored = await prisma.faceLog.findUnique({ where: { localId: payload.localId } });
-    expect(stored?.faceAdvance).toBe(2.2);
+    expect(stored?.chainage).toBe(2.2);
   });
 
   it('refuses a duplicate sample number with an actionable message', async () => {

@@ -2,6 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { api, type FieldNotification } from '../api/client.js';
 import { db } from '../db/database.js';
+import { IS_STANDALONE } from '../deployment.js';
+import {
+  IconFaceLog,
+  IconFaceMeasurement,
+  IconObservation,
+  IconOffset,
+  IconPhoto,
+  IconSample,
+} from '../components/Icons.js';
 import { Header, Screen, SyncBar } from '../components/Layout.js';
 import { useApp } from '../state/app.js';
 
@@ -22,6 +31,15 @@ export function HomeScreen() {
   const drafts = useLiveQuery(() => db.faceLogs.filter((l) => l.status === 'DRAFT').count(), [], 0);
   const mine = useLiveQuery(() => db.faceLogs.count(), [], 0);
   const queued = useLiveQuery(() => db.queue.count(), [], 0);
+  const handover = useLiveQuery(
+    async () => {
+      if (!IS_STANDALONE) return 0;
+      const { countOutstanding } = await import('../db/handover.js');
+      return countOutstanding();
+    },
+    [],
+    0,
+  );
 
   /**
    * Notifications (§28). Only things that need the technician to do something
@@ -33,6 +51,7 @@ export function HomeScreen() {
    */
   const [notifications, setNotifications] = useState<FieldNotification[]>([]);
   const loadNotifications = useCallback(() => {
+    if (IS_STANDALONE) return;
     api.notifications().then(setNotifications).catch(() => undefined);
   }, []);
   useEffect(loadNotifications, [loadNotifications]);
@@ -95,24 +114,36 @@ export function HomeScreen() {
         )}
 
         <div className="stack">
-          <button className="action-button" data-emphasis="primary" onClick={() => push({ name: 'newFaceLog' })}>
-            <span className="glyph" aria-hidden>＋</span>
+          <button className="action-button" onClick={() => push({ name: 'newFaceLog' })}>
+            <span className="glyph"><IconFaceLog size={30} /></span>
             <span>
               NEW FACE LOG
               <span className="sub">Start a log at this working place</span>
             </span>
           </button>
 
-          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'offset', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>📐</span>
+          <button
+            className="action-button"
+            data-emphasis="primary"
+            onClick={() => requireLog((id) => push({ name: 'faceMeasurement', faceLogLocalId: id }))}
+          >
+            <span className="glyph"><IconFaceMeasurement size={30} /></span>
             <span>
-              RECORD OFFSET
-              <span className="sub">Displacement across a structure</span>
+              RECORD OFFSETS
+              <span className="sub">BMSZ tape offsets across the face, in cm</span>
+            </span>
+          </button>
+
+          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'offset', faceLogLocalId: id }))}>
+            <span className="glyph"><IconOffset size={30} /></span>
+            <span>
+              STRUCTURE DISPLACEMENT
+              <span className="sub">Offset across a fault or shear</span>
             </span>
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'observation', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>🪨</span>
+            <span className="glyph"><IconObservation size={30} /></span>
             <span>
               GEOLOGICAL OBSERVATION
               <span className="sub">Reef, contact, structure, ground</span>
@@ -120,7 +151,7 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'photo', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>📸</span>
+            <span className="glyph"><IconPhoto size={30} /></span>
             <span>
               FACE PHOTO
               <span className="sub">Photograph the face</span>
@@ -128,20 +159,13 @@ export function HomeScreen() {
           </button>
 
           <button className="action-button" onClick={() => requireLog((id) => push({ name: 'sample', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>🧪</span>
+            <span className="glyph"><IconSample size={30} /></span>
             <span>
               SAMPLE
               <span className="sub">Record a sample and its position</span>
             </span>
           </button>
 
-          <button className="action-button" data-emphasis="hazard" onClick={() => requireLog((id) => push({ name: 'hazard', faceLogLocalId: id }))}>
-            <span className="glyph" aria-hidden>⚠</span>
-            <span>
-              GEOLOGICAL HAZARD
-              <span className="sub">Also report through the normal procedure</span>
-            </span>
-          </button>
         </div>
 
         <div className="grid-2">
@@ -149,7 +173,7 @@ export function HomeScreen() {
             My logs ({mine}){drafts > 0 ? ` · ${drafts} draft${drafts === 1 ? '' : 's'}` : ''}
           </button>
           <button className="btn" onClick={() => push({ name: 'pending' })}>
-            Sync queue ({queued})
+            {IS_STANDALONE ? `Hand over (${handover})` : `Sync queue (${queued})`}
           </button>
           <button className="btn" onClick={() => push({ name: 'search' })}>
             Search

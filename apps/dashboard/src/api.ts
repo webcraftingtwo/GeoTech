@@ -5,7 +5,16 @@
  * a desk is online, and a stale review decision would be worse than an error
  * message. Failures surface immediately and say what happened.
  */
-const BASE = '/api/v1';
+/**
+ * Where the API lives.
+ *
+ * Defaults to a relative path, which is correct when the front end is served
+ * from the same origin as the API (a reverse proxy in front of both, which is
+ * the simplest and safest arrangement). Set `VITE_API_URL` at build time to
+ * point at a separate origin — e.g. the front end on static hosting and the API
+ * elsewhere — and add that origin to the API's `CORS_ORIGINS`.
+ */
+const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`;
 
 let accessToken: string | null = sessionStorage.getItem('geotech.token');
 let refreshToken: string | null = localStorage.getItem('geotech.refresh');
@@ -69,6 +78,41 @@ const qs = (params: Record<string, string | number | undefined>) => {
   return s ? `?${s}` : '';
 };
 
+/** One measured face, as the width-control report returns it. Centimetres. */
+export interface WidthControlRow {
+  recordId: string;
+  date: string;
+  section: string;
+  workplace: string;
+  distanceFromPeg: number | '';
+  faceLength: number | '';
+  stationInterval: number;
+  limitSet: string;
+  hangingwallLimit: number;
+  footwallLimit: number;
+  stations: number;
+  measured: number;
+  hangingwallBreaches: number;
+  footwallBreaches: number;
+  meanHangingwallOverbreakCm: number | '';
+  meanHangingwallCm: number | '';
+  meanFootwallCm: number | '';
+  meanMiningHeightCm: number | '';
+  minMiningHeightCm: number | '';
+  maxMiningHeightCm: number | '';
+  meanMiningHeightM: number | '';
+  aboveFlagHeight: string;
+  measuredBy: string;
+}
+
+export interface WidthControlReport {
+  title: string;
+  generatedAt: string;
+  basis: string;
+  count: number;
+  rows: WidthControlRow[];
+}
+
 export const api = {
   login: (identifier: string, password: string) =>
     request<{ accessToken: string; refreshToken: string; user: { id: string; name: string; role: string; permissions: string[] } }>(
@@ -106,6 +150,8 @@ export const api = {
     request(`/conflicts/${id}/resolve`, { method: 'POST', body: JSON.stringify({ keep, comment }) }),
 
   reportDaily: (date?: string) => request<DailyReport>(`/reports/daily${qs({ date })}`),
+  reportWidthControl: (from?: string, to?: string) =>
+    request<WidthControlReport>(`/reports/width-control${qs({ from, to })}`),
   reportHandover: (date?: string) => request<HandoverReport>(`/reports/handover${qs({ date })}`),
   reportCsv: (kind: 'daily' | 'structures' | 'samples', params: Record<string, string | undefined> = {}) =>
     request<string>(`/reports/${kind}${qs({ ...params, format: 'csv' })}`),
@@ -146,7 +192,7 @@ export interface FaceLogRow {
   dataQuality: number | null;
   submittedAt: string | null;
   technician: { id: string; name: string };
-  workplace: { code: string; name: string; section: { code: string; level: { code: string } } };
+  workplace: { code: string; name: string; bord?: string | null; section: { code: string; name: string } };
   _count?: { observations: number; photos: number; samples: number; hazards: number };
 }
 
@@ -194,6 +240,30 @@ export interface FaceLogDetail extends FaceLogRow {
     }>;
   }>;
   samples: Array<{ id: string; sampleNumber: string; sampleType: string; length: number | null; status: string }>;
+  faceMeasurements: Array<{
+    id: string;
+    recordId: string;
+    distanceFromPeg: number | null;
+    faceLength: number | null;
+    stationInterval: number;
+    limitSetCode: string;
+    limitHangingwall: number;
+    limitFootwall: number;
+    stations: Array<{ distance: number; hangingwall: number | null; footwall: number | null; reason?: string | null }>;
+    stationCount: number;
+    measuredCount: number;
+    hangingwallBreaches: number;
+    footwallBreaches: number;
+    meanHangingwall: number | null;
+    meanFootwall: number | null;
+    meanMiningHeight: number | null;
+    minMiningHeight: number | null;
+    maxMiningHeight: number | null;
+    meanHangingwallOverbreak: number | null;
+    exceedsFlagHeight: boolean;
+    measuredAt: string;
+    measuredBy: { name: string };
+  }>;
   hazards: HazardRow[];
   photos: Array<{ id: string; storageKey: string | null; capturedAt: string }>;
   reviews: Array<{ id: string; status: string; comment: string | null; reviewedAt: string; reviewer: { name: string; role: string } }>;
@@ -223,7 +293,7 @@ export interface StructureHistory {
   observations: Array<{
     offsetId: string;
     recordId: string;
-    level: string;
+    section: string;
     workplace: string;
     date: string;
     technician: string;
@@ -241,7 +311,7 @@ export interface StructureHistory {
 export interface SearchResult {
   parsed: Record<string, unknown>;
   faceLogs: FaceLogRow[];
-  offsets: Array<OffsetRow & { structure: { structureType: string; observation: { faceLog: { workplace: { code: string; section: { level: { code: string } } } } } } }>;
+  offsets: Array<OffsetRow & { structure: { structureType: string; observation: { faceLog: { workplace: { code: string; section: { code: string } } } } } }>;
   samples: Array<{ id: string; sampleNumber: string; sampleType: string }>;
   hazards: Array<{ id: string; recordId: string; hazardType: string; description: string }>;
 }

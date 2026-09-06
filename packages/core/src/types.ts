@@ -80,7 +80,8 @@ export type EntityType =
   | 'OFFSET'
   | 'SAMPLE'
   | 'HAZARD'
-  | 'PHOTO';
+  | 'PHOTO'
+  | 'FACE_MEASUREMENT';
 
 export const ENTITY_TYPES: readonly EntityType[] = [
   'FACE_LOG',
@@ -91,6 +92,7 @@ export const ENTITY_TYPES: readonly EntityType[] = [
   'SAMPLE',
   'HAZARD',
   'PHOTO',
+  'FACE_MEASUREMENT',
 ];
 
 /* ── device-authored record envelope (§30) ────────────────────────────── */
@@ -126,15 +128,23 @@ export type ExtraFields = Record<string, unknown>;
 
 /* ── mine hierarchy ───────────────────────────────────────────────────── */
 
+/**
+ * A working place, as Unki organises them (UNKI-MIN-MRM-STD-201).
+ *
+ * There is no level: work is organised by **section** — "an area of
+ * responsibility allocated to a specific person" — containing numbered
+ * **bords**, e.g. section "12 South", bords 1 to 9.
+ */
 export interface Workplace {
   id: string;
   mineCode: string;
-  levelCode: string;
   sectionCode: string;
   code: string;
   name: string;
   workplaceType: string;
-  panel?: string | null;
+  /** Bord number within the section, where the workplace is a bord. */
+  bord?: string | null;
+  strikeBelt?: string | null;
   drive?: string | null;
   stope?: string | null;
   face?: string | null;
@@ -164,7 +174,42 @@ export interface FaceLog extends SyncEnvelope {
   /** Underground, the survey reference is primary — GPS is not assumed (§7). */
   surveyReference?: string | null;
   chainage?: number | null;
-  faceAdvance?: number | null;
+
+  /**
+   * The sampling channel this face belongs to, and how far the face has
+   * advanced past it in metres.
+   *
+   * The distance is what ties a face to its channel assay. Past about 9 m the
+   * tie is no longer safe to assume, so the application says so — but it does
+   * not refuse the reading: a face 11 m off its channel is a real face, and
+   * refusing to record it would lose the observation and the problem with it.
+   */
+  channelId?: string | null;
+  distanceToChannel?: number | null;
+
+  /** TARP system class for the heading: 1, 2, 3 or S. */
+  tarpClass?: string | null;
+
+  /** Optional portable XRF reading taken at the face. */
+  xrfReading?: number | null;
+  xrfNote?: string | null;
+
+  /**
+   * The team the face log is attributed to, and the overseer's acknowledgement
+   * that the area was made safe. The acknowledgement is the one safety control
+   * left in the application, and it is a block rather than a note: geology
+   * does not send anyone to a face that has not been made safe.
+   */
+  sectionManager?: string | null;
+  geologist?: string | null;
+  shaftGeologist?: string | null;
+  official?: string | null;
+  overseer?: string | null;
+  mineName?: string | null;
+  areaMadeSafe?: boolean | null;
+
+  /** Written after the readings are in, when the technician knows the face. */
+  structuralComment?: string | null;
   easting?: number | null;
   northing?: number | null;
   elevation?: number | null;

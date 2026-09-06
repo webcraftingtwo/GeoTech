@@ -47,42 +47,64 @@ async function main() {
     update: DEFAULT_CONVENTION,
   });
 
-  console.log('Seeding mine hierarchy (placeholder)…');
+  // Mine hierarchy as Unki works it: a working place is named by its section
+  // and bord — "14 South bord 5" — with a strike belt per section
+  // (UNKI-MIN-MRM-STD-201 §9.1). There is no level in this hierarchy.
+  console.log('Seeding mine hierarchy…');
   const mine = await prisma.mine.upsert({
-    where: { code: 'DEMO' },
-    create: { code: 'DEMO', name: 'Demonstration Mine' },
-    update: {},
+    where: { code: 'UNKI' },
+    create: { code: 'UNKI', name: 'Unki Mines' },
+    update: { name: 'Unki Mines' },
   });
 
+  const sections = [
+    { code: '11N', name: '11 North', bords: 9 },
+    { code: '11S', name: '11 South', bords: 9 },
+    { code: '12N', name: '12 North', bords: 9 },
+    { code: '12S', name: '12 South', bords: 9 },
+    { code: '13N', name: '13 North', bords: 9 },
+    { code: '13S', name: '13 South', bords: 9 },
+    { code: '14N', name: '14 North', bords: 9 },
+    { code: '14S', name: '14 South', bords: 9 },
+  ];
+
   const workplaces: { id: string; code: string }[] = [];
-  for (const levelCode of ['L10', 'L12']) {
-    const level = await prisma.level.upsert({
-      where: { mineId_code: { mineId: mine.id, code: levelCode } },
-      create: { mineId: mine.id, code: levelCode, name: `${levelCode} Level` },
-      update: {},
+  for (const entry of sections) {
+    const section = await prisma.section.upsert({
+      where: { mineId_code: { mineId: mine.id, code: entry.code } },
+      create: { mineId: mine.id, code: entry.code, name: entry.name },
+      update: { name: entry.name },
     });
-    for (const sectionCode of ['N', 'S']) {
-      const section = await prisma.section.upsert({
-        where: { levelId_code: { levelId: level.id, code: sectionCode } },
-        create: { levelId: level.id, code: sectionCode, name: `${sectionCode} Section` },
+
+    for (let n = 1; n <= entry.bords; n++) {
+      const code = `${entry.code}-B${n}`;
+      const wp = await prisma.workplace.upsert({
+        where: { sectionId_code: { sectionId: section.id, code } },
+        create: {
+          sectionId: section.id,
+          code,
+          name: `${entry.name} bord ${n}`,
+          workplaceType: 'BORD',
+          bord: String(n),
+        },
         update: {},
       });
-      for (const n of [1, 2, 3]) {
-        const code = `${levelCode}${sectionCode}P${n}`;
-        const wp = await prisma.workplace.upsert({
-          where: { sectionId_code: { sectionId: section.id, code } },
-          create: {
-            sectionId: section.id,
-            code,
-            name: `${levelCode} ${sectionCode} Panel ${n}`,
-            workplaceType: 'PANEL',
-            panel: `P${n}`,
-          },
-          update: {},
-        });
-        workplaces.push({ id: wp.id, code: wp.code });
-      }
+      workplaces.push({ id: wp.id, code: wp.code });
     }
+
+    const beltCode = `${entry.code}-SB`;
+    const belt = await prisma.workplace.upsert({
+      where: { sectionId_code: { sectionId: section.id, code: beltCode } },
+      create: {
+        sectionId: section.id,
+        code: beltCode,
+        name: `${entry.name} strike belt`,
+        workplaceType: 'STRIKE_BELT',
+        strikeBelt: entry.code,
+      },
+      update: {},
+    });
+    workplaces.push({ id: belt.id, code: belt.code });
   }
 
   console.log('Seeding demonstration users…');
@@ -105,9 +127,9 @@ async function main() {
   }
 
   console.log('\nSeed complete.');
-  console.log(`  ${PLACEHOLDER_REFERENCE_DATA.length} reference lists, ${workplaces.length} workplaces, ${users.length} users.`);
+  console.log(`  ${PLACEHOLDER_REFERENCE_DATA.length} reference lists, ${sections.length} sections, ${workplaces.length} workplaces, ${users.length} users.`);
   console.log('  Development sign-in: T001 / G001 / S001 / A001 with password "ChangeMe123".');
-  console.log('  Placeholder geological terminology — replace with the mine-approved lists before production use.');
+  console.log('  Terminology follows UNKI-MIN-MRM-STD-201. Confirm against the current standard before production use.');
 }
 
 main()

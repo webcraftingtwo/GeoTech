@@ -41,17 +41,17 @@ async function main() {
   if (!login.ok) throw new Error(`Sign-in failed (${login.status}). Is the API running and seeded?`);
   const { accessToken, user } = await login.json();
 
-  const workplaces: Array<{ id: string; code: string; levelCode: string }> = (
+  const workplaces: Array<{ id: string; code: string; sectionCode: string }> = (
     await (await fetch(`${BASE}/sync/reference`, { headers: { authorization: `Bearer ${accessToken}` } })).json()
   ).workplaces;
 
   // The same fault seen at four faces, with the displacement growing along it —
   // exactly the pattern the structure-history view exists to reveal (§23).
   const observations = [
-    { workplace: 'L10NP1', offset: 2.1, dip: 55, confidence: 'HIGH', shift: 'MORNING' },
-    { workplace: 'L10SP2', offset: 2.3, dip: 57, confidence: 'HIGH', shift: 'MORNING' },
-    { workplace: 'L12NP1', offset: 2.5, dip: 57, confidence: 'MEDIUM', shift: 'AFTERNOON' },
-    { workplace: 'L12SP3', offset: 2.4, dip: 59, confidence: 'MEDIUM', shift: 'NIGHT' },
+    { workplace: '12S-B3', offset: 2.1, dip: 55, confidence: 'HIGH', shift: 'MORNING' },
+    { workplace: '12S-B4', offset: 2.3, dip: 57, confidence: 'HIGH', shift: 'MORNING' },
+    { workplace: '12S-B5', offset: 2.5, dip: 57, confidence: 'MEDIUM', shift: 'AFTERNOON' },
+    { workplace: '12N-B2', offset: 2.4, dip: 59, confidence: 'MEDIUM', shift: 'NIGHT' },
   ];
 
   const operations: Op[] = [];
@@ -75,7 +75,6 @@ async function main() {
         shiftDate: now,
         shift: entry.shift,
         surveyReference: `PEG-${1200 + index * 17}`,
-        faceAdvance: 1.6 + index * 0.2,
         locationMethod: 'SURVEY_STATION',
         locationConfidence: 'HIGH',
         status: 'SUBMITTED',
@@ -92,7 +91,7 @@ async function main() {
       op('REEF_OBSERVATION', {
         localId: newLocalId(),
         faceLogLocalId: faceLogId,
-        reefNameCode: 'REEF_A',
+        reefNameCode: 'MSZ',
         reefWidth: 0.9 + index * 0.05,
         hwLithologyCode: 'NORITE',
         fwLithologyCode: 'PYROXENITE',
@@ -117,7 +116,7 @@ async function main() {
         localId: newLocalId(),
         structureLocalId: structureId,
         markerType: 'REEF',
-        markerRef: 'REEF_A',
+        markerRef: 'MSZ',
         apparentOffset: entry.offset,
         unit: 'M',
         verticalSense: 'DOWN',
@@ -136,7 +135,7 @@ async function main() {
         faceLogLocalId: faceLogId,
         sampleNumber: `DEMO-SMP-${String(index).padStart(4, '0')}`,
         sampleType: 'CHANNEL',
-        materialCode: 'CHROMITITE',
+        materialCode: 'PYROXENITE',
         fromPosition: 0,
         toPosition: 0.9,
         length: 0.9,

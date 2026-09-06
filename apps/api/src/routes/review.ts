@@ -38,7 +38,7 @@ export default async function reviewRoutes(app: FastifyInstance) {
       prisma.faceLog.findMany({
         where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW'] } },
         include: {
-          workplace: { include: { section: { include: { level: true } } } },
+          workplace: { include: { section: true } },
           technician: { select: { id: true, name: true } },
           _count: { select: { observations: true, photos: true, samples: true, hazards: true } },
         },

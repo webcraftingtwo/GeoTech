@@ -8,7 +8,6 @@ const listQuery = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
   workplaceId: z.string().optional(),
-  levelCode: z.string().optional(),
   sectionCode: z.string().optional(),
   technicianId: z.string().optional(),
   status: z.string().optional(),
@@ -36,20 +35,15 @@ export default async function recordRoutes(app: FastifyInstance) {
         ...(q.to ? { lte: new Date(q.to) } : {}),
       };
     }
-    if (q.levelCode || q.sectionCode) {
-      where.workplace = {
-        section: {
-          ...(q.sectionCode ? { code: q.sectionCode } : {}),
-          ...(q.levelCode ? { level: { code: q.levelCode } } : {}),
-        },
-      };
+    if (q.sectionCode) {
+      where.workplace = { section: { code: q.sectionCode } };
     }
 
     const [items, total] = await Promise.all([
       prisma.faceLog.findMany({
         where,
         include: {
-          workplace: { include: { section: { include: { level: true } } } },
+          workplace: { include: { section: true } },
           technician: { select: { id: true, name: true, employeeNo: true } },
           _count: { select: { observations: true, samples: true, hazards: true, photos: true } },
         },
@@ -70,9 +64,10 @@ export default async function recordRoutes(app: FastifyInstance) {
     const log = await prisma.faceLog.findUnique({
       where: { id },
       include: {
-        workplace: { include: { section: { include: { level: { include: { mine: true } } } } } },
+        workplace: { include: { section: { include: { mine: true } } } },
         technician: { select: { id: true, name: true, employeeNo: true } },
         reefObservations: true,
+        faceMeasurements: { include: { measuredBy: { select: { id: true, name: true } } } },
         samples: true,
         hazards: true,
         photos: true,
@@ -122,7 +117,7 @@ export default async function recordRoutes(app: FastifyInstance) {
           include: {
             observation: {
               include: {
-                faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } },
+                faceLog: { include: { workplace: { include: { section: true } } } },
               },
             },
           },
@@ -205,7 +200,7 @@ export default async function recordRoutes(app: FastifyInstance) {
           include: {
             faceLog: {
               include: {
-                workplace: { include: { section: { include: { level: true } } } },
+                workplace: { include: { section: true } },
                 technician: { select: { id: true, name: true } },
               },
             },
@@ -222,7 +217,7 @@ export default async function recordRoutes(app: FastifyInstance) {
         structureId: s.id,
         offsetId: o.id,
         recordId: o.recordId,
-        level: s.observation.faceLog.workplace.section.level.code,
+        level: s.observation.faceLog.workplace.section.code,
         section: s.observation.faceLog.workplace.section.code,
         workplace: s.observation.faceLog.workplace.code,
         date: s.observation.faceLog.shiftDate,
@@ -263,7 +258,7 @@ export default async function recordRoutes(app: FastifyInstance) {
     return prisma.hazard.findMany({
       where: q.status ? { status: q.status as Prisma.EnumHazardStatusFilter['equals'] } : {},
       include: {
-        faceLog: { include: { workplace: { include: { section: { include: { level: true } } } } } },
+        faceLog: { include: { workplace: { include: { section: true } } } },
         raisedBy: { select: { id: true, name: true } },
       },
       orderBy: [{ status: 'asc' }, { raisedAt: 'desc' }],

@@ -7,6 +7,7 @@ import type {
   Photo,
   ReefObservation,
   Sample,
+  StoredFaceMeasurement,
   Structure,
   SyncState,
 } from '@geotech/core';
@@ -89,6 +90,7 @@ export class GeoTechDatabase extends Dexie {
   samples!: Table<Sample, string>;
   hazards!: Table<Hazard, string>;
   photos!: Table<Photo, string>;
+  faceMeasurements!: Table<StoredFaceMeasurement & { syncState: SyncState; deviceId: string }, string>;
   photoBlobs!: Table<PhotoBlob, string>;
   queue!: Table<QueueItem, number>;
   reference!: Table<CachedReference, string>;
@@ -106,6 +108,7 @@ export class GeoTechDatabase extends Dexie {
       samples: 'localId, faceLogLocalId, sampleNumber, syncState',
       hazards: 'localId, faceLogLocalId, syncState, status',
       photos: 'localId, faceLogLocalId, observationLocalId, offsetLocalId, syncState',
+      faceMeasurements: 'localId, faceLogLocalId, syncState',
       photoBlobs: 'localId, uploaded',
       queue: '++id, localId, entityType, nextAttemptAt, blocked',
       reference: 'key',
@@ -126,6 +129,7 @@ export const RECORD_TABLES = [
   'offsets',
   'samples',
   'hazards',
+  'faceMeasurements',
   'photos',
 ] as const;
 
@@ -139,6 +143,7 @@ export const ENTITY_FOR_TABLE: Record<RecordTable, string> = {
   offsets: 'OFFSET',
   samples: 'SAMPLE',
   hazards: 'HAZARD',
+  faceMeasurements: 'FACE_MEASUREMENT',
   photos: 'PHOTO',
 };
 

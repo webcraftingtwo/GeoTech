@@ -19,7 +19,8 @@
     "dev:dashboard": "npm run dev -w @geotech/dashboard",
     "db:up": "docker compose up -d postgres",
     "db:push": "npm run db:push -w @geotech/api",
-    "db:seed": "npm run db:seed -w @geotech/api"
+    "db:seed": "npm run db:seed -w @geotech/api",
+    "build:standalone": "npm run build:standalone -w @geotech/field && npm run build:standalone -w @geotech/dashboard"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"

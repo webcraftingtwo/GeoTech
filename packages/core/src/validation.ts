@@ -32,6 +32,12 @@ import {
   type RefList,
 } from './reference.js';
 
+/**
+ * How far a face can advance past its sampling channel before the channel
+ * assay can no longer be tied to it, in metres.
+ */
+export const CHANNEL_TIE_LIMIT_M = 9;
+
 export type Severity = 'ERROR' | 'WARNING';
 
 export interface ValidationIssue {
@@ -283,8 +289,50 @@ export function validateFaceLog(log: Partial<FaceLog>, ctx: ValidationContext = 
       issue('coordinateSystem', 'WARNING', 'facelog.coordinate_system_missing', 'Coordinates entered without a coordinate system — the position cannot be plotted reliably.'),
     );
   }
-  if (present(log.faceAdvance) && (log.faceAdvance as number) < 0) {
-    issues.push(issue('faceAdvance', 'WARNING', 'facelog.negative_advance', 'Face advance is negative. Confirm the reading — a negative advance is unusual.', log.faceAdvance));
+  // The overseer's acknowledgement is the one safety control the application
+  // still carries, and it blocks: geology does not send anyone to a face that
+  // has not been made safe. Everything else that used to gate a face log —
+  // tool checks, pre-inspection lists — has been removed at the Chief
+  // Geologist's instruction, on the grounds that it duplicated controls the
+  // mine already runs elsewhere.
+  if (log.areaMadeSafe === false) {
+    issues.push(
+      issue(
+        'areaMadeSafe',
+        'ERROR',
+        'facelog.area_not_made_safe',
+        'The overseer has not declared this area made safe. Do not log this face until they have.',
+      ),
+    );
+  } else if (!present(log.areaMadeSafe)) {
+    issues.push(
+      issue('areaMadeSafe', 'ERROR', 'facelog.area_safety_unrecorded', 'Record the overseer\u2019s declaration that the area was made safe.'),
+    );
+  }
+  if (log.areaMadeSafe === true && !present(log.overseer)) {
+    issues.push(
+      issue('overseer', 'ERROR', 'facelog.overseer_required', 'Name the overseer who declared the area made safe. A declaration with nobody behind it is not one.'),
+    );
+  }
+
+  // Past roughly 9 m the face can no longer be safely tied to its channel
+  // assay. Said plainly and not refused: an 11 m face is a real face, and the
+  // problem with it is exactly what a geologist needs to see.
+  if (present(log.distanceToChannel)) {
+    const d = log.distanceToChannel as number;
+    if (d < 0) {
+      issues.push(issue('distanceToChannel', 'ERROR', 'facelog.channel_distance_negative', 'Distance to the channel cannot be negative.', d));
+    } else if (d > CHANNEL_TIE_LIMIT_M) {
+      issues.push(
+        issue(
+          'distanceToChannel',
+          'WARNING',
+          'facelog.channel_distance_far',
+          `The face is ${d} m past channel ${log.channelId ?? '(unnamed)'}, beyond the ${CHANNEL_TIE_LIMIT_M} m within which the channel assay can be tied to it. Record it, and say so to the geologist.`,
+          d,
+        ),
+      );
+    }
   }
   if (ctx.hasObservation === false) {
     issues.push(issue('observations', 'WARNING', 'facelog.no_observations', 'No geological observations recorded against this face log yet.'));

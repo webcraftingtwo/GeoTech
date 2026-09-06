@@ -1,7 +1,16 @@
 import type { SyncBatch, SyncBatchResult } from '@geotech/core';
 import { db } from '../db/database.js';
 
-const BASE = '/api/v1';
+/**
+ * Where the API lives.
+ *
+ * Defaults to a relative path, which is correct when the front end is served
+ * from the same origin as the API (a reverse proxy in front of both, which is
+ * the simplest and safest arrangement). Set `VITE_API_URL` at build time to
+ * point at a separate origin — e.g. the front end on static hosting and the API
+ * elsewhere — and add that origin to the API's `CORS_ORIGINS`.
+ */
+const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`;
 
 export class ApiUnavailable extends Error {
   constructor(message = 'No connection to the server.') {
@@ -140,23 +149,34 @@ export interface FieldNotification {
   createdAt: string;
 }
 
+/**
+ * A working place as Unki organises them: a section such as "12 South"
+ * containing numbered bords (UNKI-MIN-MRM-STD-201 §9.1). No level.
+ */
 export interface ReferenceWorkplace {
   id: string;
   code: string;
   name: string;
   workplaceType: string;
-  panel?: string | null;
+  bord?: string | null;
+  strikeBelt?: string | null;
   drive?: string | null;
   stope?: string | null;
   face?: string | null;
   sectionId: string;
   sectionCode: string;
-  levelCode: string;
+  sectionName?: string;
   mineCode: string;
 }
 
 export interface ReferenceBundle {
   fetchedAt: string;
+  /**
+   * Standalone only: which build's built-in list this is. Absent on a bundle
+   * that came from a server or was imported by the mine, so those are never
+   * overwritten by an application update.
+   */
+  seedVersion?: number;
   convention: import('@geotech/core').MeasurementConvention;
   referenceLists: import('@geotech/core').RefList[];
   validationRules: import('@geotech/core').ConfigurableRule[];

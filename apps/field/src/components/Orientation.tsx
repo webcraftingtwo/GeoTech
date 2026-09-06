@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MeasurementSource } from '@geotech/core';
+import { IconCompass } from './Icons.js';
 import { MeasurementField } from './Keypad.js';
 
 /**
@@ -133,7 +134,13 @@ export function OrientationCapture({
         ) : (
           <>
             <button type="button" className="btn btn-block" onClick={() => void read()} disabled={sensor === 'requesting'}>
-              {sensor === 'reading' ? 'Reading… hold the device against the plane' : '📱 Read from device compass'}
+              {sensor === 'reading' ? (
+                'Reading… hold the device against the plane'
+              ) : (
+                <>
+                  <IconCompass size={20} /> Read from device compass
+                </>
+              )}
             </button>
             {live && (
               <>

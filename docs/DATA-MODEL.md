@@ -23,13 +23,14 @@ Normalized PostgreSQL schema. Authoritative definition lives in
 ```
 users ──< devices
   │
-  └──< face_logs >── workplaces >── sections >── levels >── mines
+  └──< face_logs >── workplaces >── sections >── mines
          │  │
          │  ├──< observations ──< structures ──< offsets ──< interpretations
          │  │         │                                │
          │  │         ├──< hazards                     └──< photos
          │  │         └──< photos
          │  ├──< reef_observations
+         │  ├──< face_measurements   (§9.8 — BMSZ tape offsets)
          │  ├──< samples
          │  └──< photos
          │
@@ -48,10 +49,22 @@ ref_lists ──< ref_items          validation_rules          sync_batches ─�
 `role ∈ TECHNICIAN | GEOLOGIST | SENIOR_GEOLOGIST | ADMIN` (§3). Deactivation is a
 flag, never a delete — historical observations must keep a resolvable author.
 
-### Mine hierarchy — `mines` / `levels` / `sections` / `workplaces`
-`workplaces` carries `code · name · workplaceType · panel · drive · stope · face · active`
-where `workplaceType ∈ panel | raise | drive | stope | development_end` (by ref code).
-Technicians select from this hierarchy; they never type a workplace name.
+### Mine hierarchy — `mines` / `sections` / `workplaces`
+
+**There is no level.** Unki organises underground work by **section** —
+UNKI-MIN-MRM-STD-201 §3.0 defines a section as "an area of responsibility
+allocated to a specific person" — and a section contains numbered **bords**:
+section `12S` ("12 South"), bords 1 to 9, plus a strike belt.
+
+`workplaces` carries `code · name · workplaceType · bord · strikeBelt · drive ·
+stope · face · active`, where `workplaceType ∈ bord | strike_belt | end | raise
+| decline | ledging` by reference code, configurable per mine.
+
+"Half level" appears in the standard (§9.1: a technician covers "two half
+levels consisting of 6 bords and one strike belt") but describes a technician's
+beat, not a place a face belongs to, so it is not part of the hierarchy.
+
+Technicians select section then bord; they never type a workplace name.
 
 ### `face_logs`
 ```
@@ -121,6 +134,59 @@ Binary lives in object storage. `sha256` gives duplicate detection and integrity
 proof. `annotations` holds the digital face-mapping vector layer (§9) so the original
 photograph is never altered.
 
+### `face_measurements` (§9.8)
+
+The face measurement recorded on the Face Marking Sheet: tape offsets from the
+**BMSZ** — the Blast Marking Stope Zero line painted on the face — taken at
+stations across it.
+
+`faceLogLocalId · distanceFromPeg · blastNumber · advance ·
+distanceToCapitalFpBorder · faceLength · stationInterval · traverseDirection ·
+measurementMethod · limitSetCode · limitHangingwall · limitFootwall ·
+stations(JSONB) · expectedGrade · actualGrade · confidence · measuredById ·
+measuredAt`
+
+Sign convention, fixed in `packages/core/src/facemeasurement.ts` and never
+re-derived anywhere else: **the BMSZ is zero, hangingwall offsets are positive
+(up), footwall offsets are negative (down).** A footwall reading entered as a
+positive number is rejected rather than silently flipped — the two readings at a
+station are what determine whether the cut was in limits, and guessing at a
+sign would change that answer.
+
+`stations` is a JSONB array of `{ distance, hangingwall, footwall, reason, note }`.
+It is stored as an array rather than a child table because a station has no
+identity outside its face: nothing references it, nothing reviews it
+independently, and the readings across a face are only meaningful in order.
+
+**The applied limits are snapshotted onto the row.** `limitSetCode`,
+`limitHangingwall` and `limitFootwall` are copied from the reference list at
+capture, not looked up at read time. A bord (H/W +0.45, F/W −1.35) and a decline
+(H/W +1.5, F/W −1.0) are cut to different profiles; if the mine later revises a
+limit, every historical face must still show what it was actually judged
+against, or the record stops meaning what it said when it was signed.
+
+The derived aggregates — `stationCount`, `measuredCount`, `hangingwallBreaches`,
+`footwallBreaches`, `meanStopeWidth`, `minStopeWidth`, `maxStopeWidth`,
+`meanHangingwallOverbreak` — are **recomputed server-side at ingest** from the
+stations and the snapshotted limits. The device sends them, and the server
+ignores what it sent: a breach count is a compliance figure, and it is not taken
+on the word of a handset.
+
+**Every offset is stored in centimetres.** That is what the tape says and what
+the Chief Geologist asked the application to hold; a reading converted on entry
+is a reading that can be converted wrongly, with nothing left to check it
+against. Metres appear only where a figure leaves geology for management, and
+the conversion happens there — in the width-control report and the management
+dashboard, once each.
+
+The traverse is fixed rather than configurable: stations at **1 m**, the first
+1 m from the sidewall, **no station zero**, and **face length − 1** offsets. A
+7.2 m face is six offsets, at 1 through 6 m. The **2 m and 5 m offsets are
+mandatory** and a face cannot be submitted without them. This overrides
+§9.8.iv's two metre interval, which the mine does not work to. `stationInterval`
+is still stored on each record so an old reading stays readable if the rule is
+ever revised.
+
 ### `samples` (§16)
 `sampleNumber` is **globally unique** — the constraint is in the database, and the
 device additionally checks its local set before accepting, so a duplicate is caught
@@ -161,7 +227,8 @@ Both are cached to devices and evaluated by the shared engine in `packages/core`
 `observation_type · structure_type · reef_name · lithology · contact_type ·
 contact_quality · sample_type · hazard_type · confidence · unit · offset_direction ·
 marker_type · surface_condition · infill · ground_condition · workplace_type ·
-shift · coordinate_system · location_method`
+shift · coordinate_system · location_method · face_limit_set ·
+face_breach_reason · face_measurement_method`
 
 > Seed values are **neutral placeholders for development only**. They are not
 > official Unki geological codes. Authorized mine personnel must enter the
