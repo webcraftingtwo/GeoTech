@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
+  CHANNEL_TIE_LIMIT_M,
   mintProvisionalRecordId,
   newLocalId,
   scoreRecord,
   validateFaceLog,
   type FaceLog,
-  type Observation,
   type Photo,
 } from '@geotech/core';
 import { ChipGroup } from '../components/Chips.js';
@@ -15,6 +15,7 @@ import { Header, Screen, Steps } from '../components/Layout.js';
 import { PhotoCapture } from '../components/PhotoCapture.js';
 import { QualityMeter } from '../components/Quality.js';
 import { CONFIDENCE_OPTIONS, useOptions } from '../components/refs.js';
+import { MINE_NAME } from '../deployment.js';
 import { db } from '../db/database.js';
 import { queueForSync, savePreferences, submitFaceLog } from '../db/repository.js';
 import { useApp } from '../state/app.js';
@@ -28,11 +29,10 @@ import { useApp } from '../state/app.js';
  */
 const STEPS = [
   'Where are you?',
-  'Shift details',
+  'Shift and team',
   'Where exactly?',
+  'Channel and ground',
   'Photograph the face',
-  'What did you observe?',
-  'Measurements',
   'Review and save',
 ];
 
@@ -54,21 +54,29 @@ export function NewFaceLogScreen() {
   const [sectionCode, setSectionCode] = useState<string | null>(null);
   const [shift, setShift] = useState<string | null>(null);
   const [surveyReference, setSurveyReference] = useState('');
-  const [faceAdvance, setFaceAdvance] = useState('');
   const [locationMethod, setLocationMethod] = useState<string | null>('SURVEY_STATION');
   const [locationConfidence, setLocationConfidence] = useState<string | null>('HIGH');
-  const [observationType, setObservationType] = useState<string | null>(null);
-  const [confidence, setConfidence] = useState<string | null>(null);
-  const [strike, setStrike] = useState('');
-  const [dip, setDip] = useState('');
-  const [dipDirection, setDipDirection] = useState('');
+
+  const [channelId, setChannelId] = useState('');
+  const [distanceToChannel, setDistanceToChannel] = useState('');
+  const [tarpClass, setTarpClass] = useState<string | null>(null);
+  const [xrfReading, setXrfReading] = useState('');
+
+  const [sectionManager, setSectionManager] = useState('');
+  const [geologist, setGeologist] = useState('');
+  const [shaftGeologist, setShaftGeologist] = useState('');
+  const [official, setOfficial] = useState('');
+  const [overseer, setOverseer] = useState('');
+  const [areaMadeSafe, setAreaMadeSafe] = useState<string | null>(null);
+
+  const [structuralComment, setStructuralComment] = useState('');
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [saving, setSaving] = useState(false);
 
   const shiftOptions = useOptions('shift');
-  const observationOptions = useOptions('observation_type');
   const methodOptions = useOptions('location_method');
+  const tarpOptions = useOptions('tarp_class');
 
   /** Sections, in the order a technician would read them: 11S, 12N, 12S. */
   const sections = useMemo(() => {
@@ -90,9 +98,20 @@ export function NewFaceLogScreen() {
     shiftDate: new Date().toISOString(),
     shift: shift ?? undefined,
     surveyReference: surveyReference || null,
-    faceAdvance: faceAdvance ? Number(faceAdvance) : null,
     locationMethod: (locationMethod as FaceLog['locationMethod']) ?? null,
     locationConfidence: (locationConfidence as FaceLog['locationConfidence']) ?? null,
+    channelId: channelId || null,
+    distanceToChannel: distanceToChannel ? Number(distanceToChannel) : null,
+    tarpClass: tarpClass ?? null,
+    xrfReading: xrfReading ? Number(xrfReading) : null,
+    sectionManager: sectionManager || null,
+    geologist: geologist || null,
+    shaftGeologist: shaftGeologist || null,
+    official: official || null,
+    overseer: overseer || null,
+    mineName: MINE_NAME,
+    areaMadeSafe: areaMadeSafe === null ? null : areaMadeSafe === 'SAFE',
+    structuralComment: structuralComment || null,
     notes: notes || null,
   };
 
@@ -101,24 +120,27 @@ export function NewFaceLogScreen() {
     lists: reference.lists,
     rules: reference.rules,
     hasPhoto: photos.length > 0,
-    hasObservation: observationType != null,
   });
 
   const quality = scoreRecord({
     hasLocation: Boolean(surveyReference),
     hasPhoto: photos.length > 0,
-    structurePresent: ['FAULT', 'DYKE', 'SHEAR', 'JOINT'].includes(observationType ?? ''),
-    structureClassified: observationType != null,
-    orientationRecorded: Boolean(strike && dip && dipDirection),
+    structurePresent: false,
+    structureClassified: false,
+    orientationRecorded: false,
     offsetPresent: false,
     offsetRecorded: false,
-    observationConfidence: (confidence as 'HIGH' | 'MEDIUM' | 'LOW' | null) ?? null,
+    observationConfidence: null,
     requiredFieldsComplete: validation.ok,
-    hasObservation: observationType != null,
+    hasObservation: false,
   });
 
   const canAdvance = () => {
     if (step === 0) return Boolean(workplaceId);
+    // The area declaration gates the whole log, so it gates this step: a
+    // technician should not be filling in a channel number for a face they
+    // are not going to be allowed to record.
+    if (step === 1) return areaMadeSafe === 'SAFE' && Boolean(overseer.trim());
     if (step === 2) return Boolean(surveyReference);
     return true;
   };
@@ -136,9 +158,20 @@ export function NewFaceLogScreen() {
         shiftDate: now,
         shift: shift ?? '',
         surveyReference: surveyReference || null,
-        faceAdvance: faceAdvance ? Number(faceAdvance) : null,
         locationMethod: (locationMethod as FaceLog['locationMethod']) ?? null,
         locationConfidence: (locationConfidence as FaceLog['locationConfidence']) ?? null,
+        channelId: channelId || null,
+        distanceToChannel: distanceToChannel ? Number(distanceToChannel) : null,
+        tarpClass: tarpClass ?? null,
+        xrfReading: xrfReading ? Number(xrfReading) : null,
+        sectionManager: sectionManager || null,
+        geologist: geologist || null,
+        shaftGeologist: shaftGeologist || null,
+        official: official || null,
+        overseer: overseer || null,
+        mineName: MINE_NAME,
+        areaMadeSafe: areaMadeSafe === 'SAFE',
+        structuralComment: structuralComment || null,
         status: submit ? 'SUBMITTED' : 'DRAFT',
         notes: notes || null,
         deviceId: session.deviceId,
@@ -149,35 +182,8 @@ export function NewFaceLogScreen() {
         ...(submit ? { submittedAt: now } : {}),
       };
 
-      await db.transaction('rw', db.faceLogs, db.observations, db.photos, async () => {
+      await db.transaction('rw', db.faceLogs, db.photos, async () => {
         await db.faceLogs.put(faceLog);
-
-        if (observationType) {
-          const observation: Observation = {
-            localId: newLocalId(),
-            recordId: mintProvisionalRecordId({
-              site: 'UNK',
-              prefix: 'GEO',
-              deviceId: session.deviceId,
-              localSequence: Math.floor(Math.random() * 900000) + 1,
-            }),
-            faceLogLocalId: localId,
-            observationType,
-            confidence: (confidence as Observation['confidence']) ?? null,
-            strike: strike ? Number(strike) : null,
-            dip: dip ? Number(dip) : null,
-            dipDirection: dipDirection ? Number(dipDirection) : null,
-            measurementSource: strike || dip || dipDirection ? 'MANUAL' : null,
-            observedById: session.userId,
-            observedAt: now,
-            deviceId: session.deviceId,
-            version: 1,
-            syncState: submit ? 'PENDING_SYNC' : 'DRAFT',
-            createdAt: now,
-            updatedAt: now,
-          };
-          await db.observations.put(observation);
-        }
 
         // Photographs were written as they were taken; attach them to the log.
         for (const photo of photos) {
@@ -258,6 +264,61 @@ export function NewFaceLogScreen() {
               <span className="small muted">Filled in automatically. Change the shift below if it is wrong.</span>
             </div>
             <ChipGroup label="Shift" options={shiftOptions} value={shift} onChange={setShift} />
+
+            <div className="card stack">
+              <span className="label">Team</span>
+              <label>
+                <span className="label">Section manager</span>
+                <input className="input" value={sectionManager} onChange={(e) => setSectionManager(e.target.value)} />
+              </label>
+              <label>
+                <span className="label">Geologist</span>
+                <input className="input" value={geologist} onChange={(e) => setGeologist(e.target.value)} />
+              </label>
+              <label>
+                <span className="label">Shaft geologist</span>
+                <input className="input" value={shaftGeologist} onChange={(e) => setShaftGeologist(e.target.value)} />
+              </label>
+              <label>
+                <span className="label">Official</span>
+                <input className="input" value={official} onChange={(e) => setOfficial(e.target.value)} />
+              </label>
+            </div>
+
+            <div className="card stack" data-tone={areaMadeSafe === 'UNSAFE' ? 'danger' : undefined}>
+              <span className="label">Overseer acknowledgement — {MINE_NAME}</span>
+              <label>
+                <span className="label">Overseer</span>
+                <input
+                  className="input"
+                  value={overseer}
+                  onChange={(e) => setOverseer(e.target.value)}
+                  placeholder="Who declared the area"
+                />
+              </label>
+              <ChipGroup
+                label="Area made safe?"
+                options={[
+                  { code: 'SAFE', label: 'Area made safe' },
+                  { code: 'UNSAFE', label: 'Area NOT made safe' },
+                ]}
+                value={areaMadeSafe}
+                onChange={setAreaMadeSafe}
+                allowClear={false}
+              />
+              {areaMadeSafe === 'UNSAFE' && (
+                <div className="issue" data-severity="ERROR">
+                  <span className="issue-tag">STOP</span>
+                  <span>
+                    Do not log this face. Leave the working place and report it. Nothing here is worth going to a face
+                    that has not been made safe.
+                  </span>
+                </div>
+              )}
+              <span className="small muted">
+                The one safety control this application carries. Everything else the mine already runs elsewhere.
+              </span>
+            </div>
           </div>
         )}
 
@@ -273,7 +334,6 @@ export function NewFaceLogScreen() {
                 autoCapitalize="characters"
               />
             </label>
-            <MeasurementField label="Face advance" unit="m" value={faceAdvance} onChange={setFaceAdvance} />
             <ChipGroup label="How was the position established?" options={methodOptions} value={locationMethod} onChange={setLocationMethod} />
             <ChipGroup label="Location confidence" options={CONFIDENCE_OPTIONS} value={locationConfidence} onChange={setLocationConfidence} />
             <span className="small muted">
@@ -282,7 +342,37 @@ export function NewFaceLogScreen() {
           </div>
         )}
 
-        {step === 3 && session && (
+        {step === 3 && (
+          <div className="stack">
+            <label>
+              <span className="label">Channel ID</span>
+              <input
+                className="input input-mono"
+                value={channelId}
+                onChange={(e) => setChannelId(e.target.value)}
+                placeholder="e.g. CH-1412"
+                autoCapitalize="characters"
+              />
+            </label>
+            <MeasurementField
+              label="Distance from the channel to the face"
+              unit="m"
+              value={distanceToChannel}
+              onChange={setDistanceToChannel}
+            />
+            <span className="small muted">
+              Past {CHANNEL_TIE_LIMIT_M} m the channel assay can no longer be tied to this face. Record the real
+              distance either way — the geologist needs to see it.
+            </span>
+
+            <ChipGroup label="TARP system class" options={tarpOptions} value={tarpClass} onChange={setTarpClass} />
+
+            <MeasurementField label="XRF reading (optional)" unit="" value={xrfReading} onChange={setXrfReading} />
+            <span className="small muted">Leave blank unless an XRF was taken at this face.</span>
+          </div>
+        )}
+
+        {step === 4 && session && (
           <PhotoCapture
             faceLogLocalId={localId}
             deviceId={session.deviceId}
@@ -291,29 +381,24 @@ export function NewFaceLogScreen() {
           />
         )}
 
-        {step === 4 && (
-          <div className="stack">
-            <ChipGroup label="Observation type" options={observationOptions} value={observationType} onChange={setObservationType} />
-            <ChipGroup label="Geological confidence" options={CONFIDENCE_OPTIONS} value={confidence} onChange={setConfidence} />
-            <span className="small muted">LOW confidence is a valid, useful answer. Recording it is what matters.</span>
-          </div>
-        )}
-
         {step === 5 && (
-          <div className="stack">
-            <MeasurementField label="Strike" unit="°" value={strike} onChange={setStrike} />
-            <MeasurementField label="Dip" unit="°" value={dip} onChange={setDip} />
-            <MeasurementField label="Dip direction" unit="°" value={dipDirection} onChange={setDipDirection} />
-            <span className="small muted">Manual readings. Leave blank if the structure could not be measured.</span>
-          </div>
-        )}
-
-        {step === 6 && (
           <div className="stack">
             <div className="card stack">
               <QualityMeter score={quality} />
             </div>
             <IssueList issues={validation.issues} />
+            <label>
+              <span className="label">Structural comment</span>
+              <textarea
+                className="textarea"
+                value={structuralComment}
+                onChange={(e) => setStructuralComment(e.target.value)}
+                placeholder="What the structure at this face is doing"
+              />
+            </label>
+            <span className="small muted">
+              Written here, at the end, because a technician knows the face by the time the readings are in.
+            </span>
             <label>
               <span className="label">Notes</span>
               <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the geologist should know" />

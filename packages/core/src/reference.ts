@@ -157,11 +157,11 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     code: 'face_limit_set',
     name: 'Face mining-cut limits',
     description:
-      'BMSZ-to-hangingwall and BMSZ-to-footwall limits applied to a face (§9.8). Revised only under Chief Geologist authorisation; the applied values are stored on each measurement so a revision never reinterprets a historical face.',
+      'BMSZ-to-hangingwall and BMSZ-to-footwall limits applied to a face (§9.8), in centimetres. Revised only under Chief Geologist authorisation; the applied values are stored on each measurement so a revision never reinterprets a historical face.',
     mineSpecific: true,
     items: [
-      item('BORD', 'Bord / ledging decline', 10, { hangingwall: 0.45, footwall: -1.35 }),
-      item('DECLINE', 'Decline', 20, { hangingwall: 1.5, footwall: -1.0 }),
+      item('BORD', 'Bord / ledging decline', 10, { hangingwall: 45, footwall: -135 }),
+      item('DECLINE', 'Decline', 20, { hangingwall: 150, footwall: -100 }),
     ],
   },
   {
@@ -299,6 +299,19 @@ export const PLACEHOLDER_REFERENCE_DATA: RefList[] = [
     ],
   },
   {
+    code: 'tarp_class',
+    name: 'TARP system class',
+    description:
+      'Trigger Action Response Plan class for the heading. Recorded on every face log.',
+    mineSpecific: true,
+    items: [
+      item('1', 'Class 1', 10),
+      item('2', 'Class 2', 20),
+      item('3', 'Class 3', 30),
+      item('S', 'Class S', 40),
+    ],
+  },
+  {
     code: 'unit',
     name: 'Measurement unit',
     description: 'Units permitted for linear measurements.',
@@ -349,7 +362,10 @@ export const DEFAULT_CONVENTION: MeasurementConvention = {
   allowNegativeOffset: false,
   strikeDipRule: 'RIGHT_HAND',
   strikeDipToleranceDeg: 15,
-  defaultUnit: 'M',
+  // Centimetres, at the Chief Geologist's instruction: it is what the
+  // technician reads off the tape, and a reading converted on entry is a
+  // reading that can be converted wrongly.
+  defaultUnit: 'CM',
   maxPlausibleWidthM: 50,
   maxPlausibleOffsetM: 100,
 };

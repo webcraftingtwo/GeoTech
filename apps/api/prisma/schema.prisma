@@ -353,13 +353,39 @@ model FaceLog {
   // GPS is not assumed to exist at all (§7).
   surveyReference    String?
   chainage           Float?
-  faceAdvance        Float?
   easting            Float?
   northing           Float?
   elevation          Float?
   coordinateSystem   String?
   locationMethod     LocationMethod?
   locationConfidence Confidence?
+
+  /// The sampling channel this face belongs to, and how far past it the face
+  /// has advanced in metres. Beyond ~9 m the channel assay can no longer be
+  /// tied to the face; the value is recorded either way, and flagged.
+  channelId         String?
+  distanceToChannel Float?
+
+  /// TARP system class for the heading: 1, 2, 3 or S.
+  tarpClass String?
+
+  /// Optional portable XRF reading taken at the face.
+  xrfReading Float?
+  xrfNote    String?
+
+  /// The team, and the overseer's declaration that the area was made safe.
+  /// The declaration is the one safety control this application carries, and
+  /// it blocks: a face log cannot be submitted without it.
+  sectionManager String?
+  geologist      String?
+  shaftGeologist String?
+  official       String?
+  overseer       String?
+  mineName       String?
+  areaMadeSafe   Boolean?
+
+  /// Written after the readings are in, when the technician knows the face.
+  structuralComment String?
 
   status      RecordStatus @default(DRAFT)
   dataQuality Int?
@@ -583,39 +609,51 @@ model FaceMeasurement {
   recordId  String @unique
   faceLogId String
 
-  /// §9.8.i — distance from the survey peg to the face.
-  distanceFromPeg           Float?
-  blastNumber               String?
-  advance                   Float?
-  distanceToCapitalFpBorder Float?
-  /// §9.8.vi — the face width of the bord.
-  faceLength                Float?
+  /// §9.8.i — distance from the survey peg to the face, in metres.
+  distanceFromPeg Float?
+  /// The face width in metres. Sets how many offsets the face carries.
+  faceLength      Float?
 
-  /// §9.8.iv specifies 2 m. Sheets in circulation record at 1 m, so the
-  /// interval actually used is stored with the readings.
-  stationInterval   Float                 @default(2)
+  /// Always 1 m. Stored so an old reading stays readable if the rule ever
+  /// changes: a face read back at the wrong spacing is a wrong face.
+  stationInterval   Float                 @default(1)
   traverseDirection FaceTraverseDirection @default(DOWN_DIP_TO_UP_DIP)
   measurementMethod String?
 
-  /// Applied limits, snapshotted. `limitSetCode` references the
-  /// `face_limit_set` reference list.
+  /// Applied limits in CENTIMETRES, snapshotted. `limitSetCode` references
+  /// the `face_limit_set` reference list.
   limitSetCode     String
   limitHangingwall Float
   limitFootwall    Float
+
+  /// The design cut for the heading, in centimetres. Not always issued.
+  designHangingwall Float?
+  designFootwall    Float?
+
+  /// When the technician started at the BMSZ. A face walked in three minutes
+  /// and one walked in twenty are not equally trustworthy.
+  startedAt DateTime?
 
   /// The stations, in traverse order: distance, hangingwall, footwall, reason.
   /// Always captured, read and corrected as a set, exactly as the sheet is.
   stations Json
 
-  /// Derived at ingest so width-control reporting does not unpack JSON.
+  /// Derived at ingest, in centimetres, so width-control reporting does not
+  /// unpack JSON — and so a breach count is the server's arithmetic rather
+  /// than a figure a handset asserted.
   stationCount             Int    @default(0)
   measuredCount            Int    @default(0)
   hangingwallBreaches      Int    @default(0)
   footwallBreaches         Int    @default(0)
-  meanStopeWidth           Float?
-  minStopeWidth            Float?
-  maxStopeWidth            Float?
+  meanHangingwall          Float?
+  meanFootwall             Float?
+  meanMiningHeight         Float?
+  minMiningHeight          Float?
+  maxMiningHeight          Float?
   meanHangingwallOverbreak Float?
+  /// True when any station was mined above the flag height. Management reads
+  /// this column rather than recomputing a threshold per report.
+  exceedsFlagHeight        Boolean @default(false)
 
   expectedGrade Float?
   actualGrade   Float?

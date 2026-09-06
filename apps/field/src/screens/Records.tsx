@@ -96,16 +96,13 @@ export function FaceLogScreen({ localId }: { localId: string }) {
               <IconObservation size={20} /> Observation
             </button>
             <button className="btn" onClick={() => push({ name: 'faceMeasurement', faceLogLocalId: localId })}>
-              <IconFaceMeasurement size={20} /> Measurement
+              <IconFaceMeasurement size={20} /> Offsets
             </button>
             <button className="btn" onClick={() => push({ name: 'photo', faceLogLocalId: localId })}>
               <IconPhoto size={20} /> Photo
             </button>
             <button className="btn" onClick={() => push({ name: 'sample', faceLogLocalId: localId })}>
               <IconSample size={20} /> Sample
-            </button>
-            <button className="btn btn-danger" style={{ gridColumn: '1 / -1' }} onClick={() => push({ name: 'hazard', faceLogLocalId: localId })}>
-              <IconHazard size={20} /> Hazard
             </button>
           </div>
         )}

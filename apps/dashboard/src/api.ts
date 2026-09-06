@@ -78,6 +78,41 @@ const qs = (params: Record<string, string | number | undefined>) => {
   return s ? `?${s}` : '';
 };
 
+/** One measured face, as the width-control report returns it. Centimetres. */
+export interface WidthControlRow {
+  recordId: string;
+  date: string;
+  section: string;
+  workplace: string;
+  distanceFromPeg: number | '';
+  faceLength: number | '';
+  stationInterval: number;
+  limitSet: string;
+  hangingwallLimit: number;
+  footwallLimit: number;
+  stations: number;
+  measured: number;
+  hangingwallBreaches: number;
+  footwallBreaches: number;
+  meanHangingwallOverbreakCm: number | '';
+  meanHangingwallCm: number | '';
+  meanFootwallCm: number | '';
+  meanMiningHeightCm: number | '';
+  minMiningHeightCm: number | '';
+  maxMiningHeightCm: number | '';
+  meanMiningHeightM: number | '';
+  aboveFlagHeight: string;
+  measuredBy: string;
+}
+
+export interface WidthControlReport {
+  title: string;
+  generatedAt: string;
+  basis: string;
+  count: number;
+  rows: WidthControlRow[];
+}
+
 export const api = {
   login: (identifier: string, password: string) =>
     request<{ accessToken: string; refreshToken: string; user: { id: string; name: string; role: string; permissions: string[] } }>(
@@ -115,6 +150,8 @@ export const api = {
     request(`/conflicts/${id}/resolve`, { method: 'POST', body: JSON.stringify({ keep, comment }) }),
 
   reportDaily: (date?: string) => request<DailyReport>(`/reports/daily${qs({ date })}`),
+  reportWidthControl: (from?: string, to?: string) =>
+    request<WidthControlReport>(`/reports/width-control${qs({ from, to })}`),
   reportHandover: (date?: string) => request<HandoverReport>(`/reports/handover${qs({ date })}`),
   reportCsv: (kind: 'daily' | 'structures' | 'samples', params: Record<string, string | undefined> = {}) =>
     request<string>(`/reports/${kind}${qs({ ...params, format: 'csv' })}`),
@@ -207,7 +244,6 @@ export interface FaceLogDetail extends FaceLogRow {
     id: string;
     recordId: string;
     distanceFromPeg: number | null;
-    blastNumber: string | null;
     faceLength: number | null;
     stationInterval: number;
     limitSetCode: string;
@@ -218,10 +254,13 @@ export interface FaceLogDetail extends FaceLogRow {
     measuredCount: number;
     hangingwallBreaches: number;
     footwallBreaches: number;
-    meanStopeWidth: number | null;
-    minStopeWidth: number | null;
-    maxStopeWidth: number | null;
+    meanHangingwall: number | null;
+    meanFootwall: number | null;
+    meanMiningHeight: number | null;
+    minMiningHeight: number | null;
+    maxMiningHeight: number | null;
     meanHangingwallOverbreak: number | null;
+    exceedsFlagHeight: boolean;
     measuredAt: string;
     measuredBy: { name: string };
   }>;

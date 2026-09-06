@@ -172,13 +172,20 @@ stations and the snapshotted limits. The device sends them, and the server
 ignores what it sent: a breach count is a compliance figure, and it is not taken
 on the word of a handset.
 
-`stationInterval` is stored per record, and the traverse's starting distance is
-recoverable from the first station. UNKI-MIN-MRM-STD-201 §9.8.iv specifies a 2 m
-interval and §9.8.ii the first reading 1 m from the sidewall; both are the
-defaults. The sheets in circulation do neither — Face Marking Sheet NS3 records
-a 7.2 m face at 1 m from the sidewall outwards, stations 0 to 7 — so the
-application warns on each deviation and stores what was used, rather than
-assuming a convention and making every reading unreadable at review.
+**Every offset is stored in centimetres.** That is what the tape says and what
+the Chief Geologist asked the application to hold; a reading converted on entry
+is a reading that can be converted wrongly, with nothing left to check it
+against. Metres appear only where a figure leaves geology for management, and
+the conversion happens there — in the width-control report and the management
+dashboard, once each.
+
+The traverse is fixed rather than configurable: stations at **1 m**, the first
+1 m from the sidewall, **no station zero**, and **face length − 1** offsets. A
+7.2 m face is six offsets, at 1 through 6 m. The **2 m and 5 m offsets are
+mandatory** and a face cannot be submitted without them. This overrides
+§9.8.iv's two metre interval, which the mine does not work to. `stationInterval`
+is still stored on each record so an old reading stays readable if the rule is
+ever revised.
 
 ### `samples` (§16)
 `sampleNumber` is **globally unique** — the constraint is in the database, and the

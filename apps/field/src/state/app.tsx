@@ -28,7 +28,6 @@ export type Route =
   | { name: 'observation'; faceLogLocalId: string }
   | { name: 'offset'; faceLogLocalId: string }
   | { name: 'sample'; faceLogLocalId: string }
-  | { name: 'hazard'; faceLogLocalId: string }
   | { name: 'photo'; faceLogLocalId: string }
   | { name: 'faceMeasurement'; faceLogLocalId: string }
   | { name: 'myLogs' }

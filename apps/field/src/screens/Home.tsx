@@ -6,7 +6,6 @@ import { IS_STANDALONE } from '../deployment.js';
 import {
   IconFaceLog,
   IconFaceMeasurement,
-  IconHazard,
   IconObservation,
   IconOffset,
   IconPhoto,
@@ -115,7 +114,7 @@ export function HomeScreen() {
         )}
 
         <div className="stack">
-          <button className="action-button" data-emphasis="primary" onClick={() => push({ name: 'newFaceLog' })}>
+          <button className="action-button" onClick={() => push({ name: 'newFaceLog' })}>
             <span className="glyph"><IconFaceLog size={30} /></span>
             <span>
               NEW FACE LOG
@@ -123,19 +122,23 @@ export function HomeScreen() {
             </span>
           </button>
 
-          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'offset', faceLogLocalId: id }))}>
-            <span className="glyph"><IconOffset size={30} /></span>
+          <button
+            className="action-button"
+            data-emphasis="primary"
+            onClick={() => requireLog((id) => push({ name: 'faceMeasurement', faceLogLocalId: id }))}
+          >
+            <span className="glyph"><IconFaceMeasurement size={30} /></span>
             <span>
-              RECORD OFFSET
-              <span className="sub">Displacement across a structure</span>
+              RECORD OFFSETS
+              <span className="sub">BMSZ tape offsets across the face, in cm</span>
             </span>
           </button>
 
-          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'faceMeasurement', faceLogLocalId: id }))}>
-            <span className="glyph"><IconFaceMeasurement size={30} /></span>
+          <button className="action-button" onClick={() => requireLog((id) => push({ name: 'offset', faceLogLocalId: id }))}>
+            <span className="glyph"><IconOffset size={30} /></span>
             <span>
-              FACE MEASUREMENT
-              <span className="sub">BMSZ tape offsets across the face</span>
+              STRUCTURE DISPLACEMENT
+              <span className="sub">Offset across a fault or shear</span>
             </span>
           </button>
 
@@ -163,13 +166,6 @@ export function HomeScreen() {
             </span>
           </button>
 
-          <button className="action-button" data-emphasis="hazard" onClick={() => requireLog((id) => push({ name: 'hazard', faceLogLocalId: id }))}>
-            <span className="glyph"><IconHazard size={30} /></span>
-            <span>
-              GEOLOGICAL HAZARD
-              <span className="sub">Also report through the normal procedure</span>
-            </span>
-          </button>
         </div>
 
         <div className="grid-2">

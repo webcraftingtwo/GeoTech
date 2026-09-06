@@ -25,6 +25,13 @@ export const IS_STANDALONE = DEPLOYMENT === 'standalone';
 
 export const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '0.1.0';
 
+/**
+ * The mine this build is for. Recorded on every face log beside the
+ * overseer's acknowledgement, because the acknowledgement is a named person
+ * declaring something at a named mine — a signature with neither is not one.
+ */
+export const MINE_NAME = (import.meta.env.VITE_MINE_NAME as string | undefined) ?? 'Unki Mines';
+
 /* ── storage capability ───────────────────────────────────────────────
    The whole product rests on the device holding records safely. If it
    cannot, the technician has to be told before they capture a shift —

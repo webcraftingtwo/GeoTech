@@ -43,7 +43,6 @@ export function App() {
       {route.name === 'offset' && <OffsetWorkflowScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'observation' && <ObservationScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'sample' && <SampleScreen faceLogLocalId={route.faceLogLocalId} />}
-      {route.name === 'hazard' && <HazardScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'photo' && <PhotoScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'faceMeasurement' && <FaceMeasurementScreen faceLogLocalId={route.faceLogLocalId} />}
       {route.name === 'myLogs' && <MyLogsScreen />}

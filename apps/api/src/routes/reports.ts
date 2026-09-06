@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { toAsciiDiagram } from '@geotech/core';
+import { MINING_HEIGHT_FLAG_CM, toAsciiDiagram, toMetres } from '@geotech/core';
 import { badRequest } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 
@@ -292,9 +292,7 @@ export default async function reportRoutes(app: FastifyInstance) {
       date: m.measuredAt.toISOString().slice(0, 10),
       section: m.faceLog.workplace.section.name,
       workplace: m.faceLog.workplace.code,
-      blastNumber: m.blastNumber ?? '',
       distanceFromPeg: m.distanceFromPeg ?? '',
-      advance: m.advance ?? '',
       faceLength: m.faceLength ?? '',
       stationInterval: m.stationInterval,
       limitSet: m.limitSetCode,
@@ -304,10 +302,16 @@ export default async function reportRoutes(app: FastifyInstance) {
       measured: m.measuredCount,
       hangingwallBreaches: m.hangingwallBreaches,
       footwallBreaches: m.footwallBreaches,
-      meanHangingwallOverbreak: m.meanHangingwallOverbreak ?? '',
-      meanStopeWidth: m.meanStopeWidth ?? '',
-      minStopeWidth: m.minStopeWidth ?? '',
-      maxStopeWidth: m.maxStopeWidth ?? '',
+      meanHangingwallOverbreakCm: m.meanHangingwallOverbreak ?? '',
+      meanHangingwallCm: m.meanHangingwall ?? '',
+      meanFootwallCm: m.meanFootwall ?? '',
+      meanMiningHeightCm: m.meanMiningHeight ?? '',
+      minMiningHeightCm: m.minMiningHeight ?? '',
+      maxMiningHeightCm: m.maxMiningHeight ?? '',
+      // Management reads metres; geology records centimetres. The conversion
+      // happens here, once, rather than in whoever opens the spreadsheet.
+      meanMiningHeightM: m.meanMiningHeight === null ? '' : toMetres(m.meanMiningHeight),
+      aboveFlagHeight: m.exceedsFlagHeight ? 'YES' : '',
       measuredBy: m.measuredBy.name,
     }));
 
@@ -319,7 +323,7 @@ export default async function reportRoutes(app: FastifyInstance) {
     return {
       title: 'Stope Width Control',
       generatedAt: new Date().toISOString(),
-      basis: 'Face measurements per UNKI-MIN-MRM-STD-201 §9.8. Limits shown are those applied when each face was measured.',
+      basis: `Face measurements per UNKI-MIN-MRM-STD-201 §9.8, in centimetres. Limits shown are those applied when each face was measured. Faces above ${MINING_HEIGHT_FLAG_CM} cm mining height are marked.`,
       count: rows.length,
       rows,
     };

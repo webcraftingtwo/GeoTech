@@ -18,15 +18,17 @@ beforeEach(async () => {
   fx = await seedFixtures(app);
 });
 
-/** The readings from Face Marking Sheet NS3, 12-07-10. */
+/** Readings from Face Marking Sheet NS3, 12-07-10, in centimetres. */
 const NS3_STATIONS = [
-  { distance: 0, hangingwall: 2.45, footwall: -1.32 },
-  { distance: 1, hangingwall: 2.47, footwall: -1.34 },
-  { distance: 2, hangingwall: 2.51, footwall: -1.32 },
-  { distance: 3, hangingwall: 2.43, footwall: -1.37 },
+  { distance: 1, hangingwall: 245, footwall: -132 },
+  { distance: 2, hangingwall: 247, footwall: -134 },
+  { distance: 3, hangingwall: 251, footwall: -132 },
+  { distance: 4, hangingwall: 243, footwall: -137 },
+  { distance: 5, hangingwall: 242, footwall: -134 },
+  { distance: 6, hangingwall: 244, footwall: -138 },
 ].map((s) => ({ ...s, reason: 'Blast over-break' }));
 
-const DECLINE = { code: 'DECLINE', label: 'Decline', hangingwall: 1.5, footwall: -1.0 };
+const DECLINE = { code: 'DECLINE', label: 'Decline', hangingwall: 150, footwall: -100 };
 
 async function syncFaceMeasurement(overrides: Record<string, unknown> = {}) {
   const fl = faceLogPayload(fx.workplaceId, fx.technician.id);
@@ -55,8 +57,6 @@ async function syncFaceMeasurement(overrides: Record<string, unknown> = {}) {
           localId: measurementLocalId,
           faceLogLocalId: fl.localId,
           distanceFromPeg: 5.1,
-          blastNumber: '14',
-          advance: 1.8,
           faceLength: 7.2,
           stationInterval: 1,
           traverseDirection: 'DOWN_DIP_TO_UP_DIP',
@@ -89,22 +89,25 @@ describe('face measurement sync (§9.8)', () => {
     const stored = await prisma.faceMeasurement.findUniqueOrThrow({ where: { localId: measurementLocalId } });
 
     expect(stored.limitSetCode).toBe('DECLINE');
-    expect(stored.limitHangingwall).toBe(1.5);
-    expect(stored.limitFootwall).toBe(-1.0);
+    expect(stored.limitHangingwall).toBe(150);
+    expect(stored.limitFootwall).toBe(-100);
   });
 
   it('recomputes the summary server-side rather than trusting the device', async () => {
     const { measurementLocalId } = await syncFaceMeasurement();
     const stored = await prisma.faceMeasurement.findUniqueOrThrow({ where: { localId: measurementLocalId } });
 
-    expect(stored.stationCount).toBe(4);
-    expect(stored.measuredCount).toBe(4);
+    expect(stored.stationCount).toBe(6);
+    expect(stored.measuredCount).toBe(6);
     // Every NS3 station breaches both limits.
-    expect(stored.hangingwallBreaches).toBe(4);
-    expect(stored.footwallBreaches).toBe(4);
+    expect(stored.hangingwallBreaches).toBe(6);
+    expect(stored.footwallBreaches).toBe(6);
     // Over-breaks 0.95, 0.97, 1.01, 0.93 → mean 0.965, stored rounded to 0.97.
-    expect(stored.meanHangingwallOverbreak).toBe(0.97);
-    expect(stored.meanStopeWidth).toBeCloseTo(3.79, 1);
+    expect(stored.meanHangingwallOverbreak).toBe(95.33);
+    expect(stored.meanHangingwall).toBe(245.33);
+    expect(stored.meanFootwall).toBe(-134.5);
+    expect(stored.meanMiningHeight).toBe(379.83);
+    expect(stored.exceedsFlagHeight).toBe(true);
   });
 
   it('ignores a summary the device claims, deriving it from the readings', async () => {
@@ -112,8 +115,8 @@ describe('face measurement sync (§9.8)', () => {
     const { measurementLocalId } = await syncFaceMeasurement({ hangingwallBreaches: 0, meanStopeWidth: 1 });
     const stored = await prisma.faceMeasurement.findUniqueOrThrow({ where: { localId: measurementLocalId } });
 
-    expect(stored.hangingwallBreaches).toBe(4);
-    expect(stored.meanStopeWidth).toBeCloseTo(3.79, 1);
+    expect(stored.hangingwallBreaches).toBe(6);
+    expect(stored.meanMiningHeight).toBe(379.83);
   });
 
   it('preserves the readings exactly as captured', async () => {
@@ -121,10 +124,10 @@ describe('face measurement sync (§9.8)', () => {
     const stored = await prisma.faceMeasurement.findUniqueOrThrow({ where: { localId: measurementLocalId } });
     const stations = stored.stations as typeof NS3_STATIONS;
 
-    expect(stations).toHaveLength(4);
-    expect(stations[0]!.hangingwall).toBe(2.45);
-    expect(stations[0]!.footwall).toBe(-1.32);
-    expect(stations[2]!.hangingwall).toBe(2.51);
+    expect(stations).toHaveLength(6);
+    expect(stations[0]!.hangingwall).toBe(245);
+    expect(stations[0]!.footwall).toBe(-132);
+    expect(stations[2]!.hangingwall).toBe(251);
   });
 
   it('records the station interval actually used', async () => {
@@ -190,9 +193,13 @@ describe('stope width control report (§9.8.vii)', () => {
       section: '12 South',
       workplace: '12S-B4',
       limitSet: 'DECLINE',
-      hangingwallLimit: 1.5,
-      footwallLimit: -1,
-      hangingwallBreaches: 4,
+      hangingwallLimit: 150,
+      footwallLimit: -100,
+      hangingwallBreaches: 6,
+      aboveFlagHeight: 'YES',
+      meanMiningHeightCm: 379.83,
+      // Management reads metres; the readings behind them stay in centimetres.
+      meanMiningHeightM: 3.798,
     });
     expect(body.basis).toMatch(/§9\.8/);
   });
@@ -204,7 +211,7 @@ describe('stope width control report (§9.8.vii)', () => {
       headers: auth(fx.geologist.token),
     });
     expect(res.headers['content-type']).toMatch(/text\/csv/);
-    expect(res.body.split('\n')[0]).toContain('meanStopeWidth');
+    expect(res.body.split('\n')[0]).toContain('meanMiningHeightCm');
   });
 
   it('is not available to a technician', async () => {

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   DEFAULT_FACE_LIMITS,
-  STANDARD_STATION_INTERVAL_M,
+  STATION_INTERVAL_M,
   activeItems,
   layOutStations,
-  STANDARD_START_OFFSET_M,
+  MANDATORY_STATIONS_M,
   mintProvisionalRecordId,
   newLocalId,
   summariseFaceMeasurement,
@@ -56,12 +56,17 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
 
   const [limitCode, setLimitCode] = useState<string | null>(limitOptions[0]?.code ?? null);
   const [faceLength, setFaceLength] = useState('');
-  const [interval, setInterval] = useState(String(STANDARD_STATION_INTERVAL_M));
-  const [startOffset, setStartOffset] = useState(String(STANDARD_START_OFFSET_M));
   const [distanceFromPeg, setDistanceFromPeg] = useState('');
-  const [blastNumber, setBlastNumber] = useState('');
-  const [advance, setAdvance] = useState('');
   const [method, setMethod] = useState<string | null>(null);
+  const [designHangingwall, setDesignHangingwall] = useState('');
+  const [designFootwall, setDesignFootwall] = useState('');
+
+  /**
+   * When the technician started at the BMSZ. Stored with the measurement so
+   * the geologist can see how long a face took to walk — a face measured in
+   * three minutes and one measured in twenty are not equally trustworthy.
+   */
+  const [startedAt, setStartedAt] = useState<string | null>(null);
 
   /* ── capture ───────────────────────────────────────────────────────── */
   const [stations, setStations] = useState<FaceStation[]>([]);
@@ -75,13 +80,15 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
 
   const measurement: FaceMeasurement = {
     distanceFromPeg: distanceFromPeg ? Number(distanceFromPeg) : null,
-    blastNumber: blastNumber || null,
-    advance: advance ? Number(advance) : null,
     faceLength: faceLength ? Number(faceLength) : null,
-    stationInterval: Number(interval) || STANDARD_STATION_INTERVAL_M,
+    stationInterval: STATION_INTERVAL_M,
     traverseDirection: 'DOWN_DIP_TO_UP_DIP',
     measurementMethod: (method as FaceMeasurement['measurementMethod']) ?? null,
     limits,
+    designCut:
+      designHangingwall && designFootwall
+        ? { hangingwall: Number(designHangingwall), footwall: Number(designFootwall) }
+        : null,
     stations,
   };
 
@@ -92,12 +99,12 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
 
   const layOut = () => {
     const length = Number(faceLength);
-    const step = Number(interval);
-    if (!length || !step) return;
-    setStations(layOutStations(length, step, Number(startOffset)));
+    if (!length) return;
+    setStations(layOutStations(length));
     setActive(0);
     setField('hangingwall');
     setEntry('');
+    setStartedAt(new Date().toISOString());
   };
 
   /** Commits the value on the keypad and moves to the next reading. */
@@ -146,8 +153,6 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
         }),
         faceLogLocalId,
         distanceFromPeg: measurement.distanceFromPeg,
-        blastNumber: measurement.blastNumber,
-        advance: measurement.advance,
         faceLength: measurement.faceLength,
         stationInterval: measurement.stationInterval,
         traverseDirection: measurement.traverseDirection,
@@ -155,9 +160,11 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
         // The applied limits travel with the readings, so a later revision
         // cannot reinterpret this face.
         limits,
+        designCut: measurement.designCut ?? null,
         stations,
         measuredById: session.userId,
         measuredAt: now,
+        startedAt,
         deviceId: session.deviceId,
         version: 1,
         syncState: 'LOCAL_SAVED' as const,
@@ -210,30 +217,10 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
               />
             </label>
 
-            <ChipGroup
-              label="Station interval"
-              options={[
-                { code: '2', label: '2 m · per standard' },
-                { code: '1', label: '1 m · per sheet' },
-              ]}
-              value={interval}
-              onChange={(code) => code && setInterval(code)}
-              allowClear={false}
-            />
-            <ChipGroup
-              label="First station"
-              options={[
-                { code: '1', label: '1 m in · per standard' },
-                { code: '0', label: 'At the sidewall · per sheet' },
-              ]}
-              value={startOffset}
-              onChange={(code) => code && setStartOffset(code)}
-              allowClear={false}
-            />
             <span className="small muted">
-              §9.8.iv specifies 2 m stations, §9.8.ii the first one 1 m from the sidewall. The sheets in circulation
-              record at 1 m from the sidewall outwards. Whichever you use is stored with the readings, so nothing is
-              ever read back at the wrong spacing.
+              Stations are at {STATION_INTERVAL_M} m, the first {STATION_INTERVAL_M} m from the sidewall. There is no
+              station zero, so the face carries one offset fewer than its width in metres. The{' '}
+              {MANDATORY_STATIONS_M.join(' m and ')} m offsets must both be read before the face can be saved.
             </span>
 
             <label>
@@ -249,14 +236,25 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
 
             <div className="grid-2">
               <label>
-                <span className="label">Blast number</span>
-                <input className="input input-mono" value={blastNumber} onChange={(e) => setBlastNumber(e.target.value)} />
+                <span className="label">Design cut H/W (cm)</span>
+                <input
+                  className="input input-mono"
+                  inputMode="numeric"
+                  value={designHangingwall}
+                  onChange={(e) => setDesignHangingwall(e.target.value)}
+                />
               </label>
               <label>
-                <span className="label">Advance (m)</span>
-                <input className="input input-mono" inputMode="decimal" value={advance} onChange={(e) => setAdvance(e.target.value)} />
+                <span className="label">Design cut F/W (cm)</span>
+                <input
+                  className="input input-mono"
+                  inputMode="numeric"
+                  value={designFootwall}
+                  onChange={(e) => setDesignFootwall(e.target.value)}
+                />
               </label>
             </div>
+            <span className="small muted">Optional — leave blank if no design cut was issued for this heading.</span>
 
             <ChipGroup label="Measured with" options={methodOptions} value={method} onChange={setMethod} />
 
@@ -265,7 +263,7 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
               <div className="row" style={{ gap: 10, alignItems: 'baseline' }}>
                 <strong style={{ fontSize: 15 }}>{limits.label}</strong>
                 <span className="value">
-                  {limits.hangingwall.toFixed(2)} / {limits.footwall.toFixed(2)}
+                  {limits.hangingwall} / {limits.footwall} cm
                 </span>
               </div>
               <span className="small muted">
@@ -276,9 +274,8 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
 
             {stations.length > 0 && (
               <div className="card small muted">
-                {stations.length} stations laid out at {measurement.stationInterval} m, the first{' '}
-                {Number(startOffset) === 0 ? 'at the sidewall' : `${startOffset} m from the sidewall`}, running
-                down-dip to up-dip (§9.8.iii).
+                {stations.length} offsets laid out at {stations[0]!.distance} to{' '}
+                {stations[stations.length - 1]!.distance} m, running down-dip to up-dip (§9.8.iii).
               </div>
             )}
           </div>
@@ -346,11 +343,11 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
                 })}
               </div>
 
-              {currentAssessment.stopeWidth !== null && (
+              {currentAssessment.miningHeight !== null && (
                 <div className="row small">
-                  <span className="label" style={{ margin: 0 }}>Stope width</span>
+                  <span className="label" style={{ margin: 0 }}>Mining height</span>
                   <div className="spacer" />
-                  <span className="value">{currentAssessment.stopeWidth.toFixed(2)} m</span>
+                  <span className="value">{currentAssessment.miningHeight} cm</span>
                 </div>
               )}
             </div>
@@ -402,13 +399,19 @@ export function FaceMeasurementScreen({ faceLogLocalId }: { faceLogLocalId: stri
                 ['F/W breaches', `${summary.footwallBreaches}`, summary.footwallBreaches > 0],
                 [
                   'Mean over-break',
-                  summary.meanHangingwallOverbreak !== null ? `${summary.meanHangingwallOverbreak.toFixed(2)} m` : '—',
+                  summary.meanHangingwallOverbreak !== null ? `${summary.meanHangingwallOverbreak} cm` : '—',
                   summary.hangingwallBreaches > 0,
                 ],
-                ['Mean stope width', summary.meanStopeWidth !== null ? `${summary.meanStopeWidth.toFixed(2)} m` : '—', false],
+                ['Mean H/W', summary.meanHangingwall !== null ? `${summary.meanHangingwall} cm` : '—', false],
+                ['Mean F/W', summary.meanFootwall !== null ? `${summary.meanFootwall} cm` : '—', false],
+                [
+                  'Mean mining height',
+                  summary.meanMiningHeight !== null ? `${summary.meanMiningHeight} cm` : '—',
+                  summary.exceedsFlagHeight,
+                ],
                 [
                   'Range',
-                  summary.minStopeWidth !== null ? `${summary.minStopeWidth.toFixed(2)}–${summary.maxStopeWidth?.toFixed(2)} m` : '—',
+                  summary.minMiningHeight !== null ? `${summary.minMiningHeight}–${summary.maxMiningHeight} cm` : '—',
                   false,
                 ],
               ].map(([label, value, bad]) => (

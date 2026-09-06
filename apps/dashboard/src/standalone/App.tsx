@@ -4,6 +4,7 @@ import {
   buildOffsetDiagram,
   labelFor,
   summariseFaceMeasurement,
+  toMetres,
   type Confidence,
   type GeologicalOffset,
   type StoredFaceMeasurement,
@@ -800,17 +801,17 @@ function FaceMeasurementDetail({ measurement }: { measurement: StoredFaceMeasure
         <FaceMeasurementField label="F/W breaches" value={String(summary.footwallBreaches)} />
         <FaceMeasurementField
           label="Mean over-break"
-          value={summary.meanHangingwallOverbreak !== null ? `${summary.meanHangingwallOverbreak.toFixed(2)} m` : '—'}
+          value={summary.meanHangingwallOverbreak !== null ? `${summary.meanHangingwallOverbreak} cm` : '—'}
         />
         <FaceMeasurementField
-          label="Mean stope width"
-          value={summary.meanStopeWidth !== null ? `${summary.meanStopeWidth.toFixed(2)} m` : '—'}
+          label="Mean mining height"
+          value={summary.meanMiningHeight !== null ? `${summary.meanMiningHeight} cm` : '—'}
         />
         <FaceMeasurementField
           label="Range"
           value={
-            summary.minStopeWidth !== null
-              ? `${summary.minStopeWidth.toFixed(2)}–${summary.maxStopeWidth!.toFixed(2)} m`
+            summary.minMiningHeight !== null
+              ? `${summary.minMiningHeight}–${summary.maxMiningHeight} cm`
               : '—'
           }
         />
@@ -900,11 +901,11 @@ function WidthsView() {
                       {summary.footwallBreaches}
                     </td>
                     <td className="num">
-                      {summary.meanStopeWidth !== null ? `${summary.meanStopeWidth.toFixed(2)} m` : '—'}
+                      {summary.meanMiningHeight !== null ? `${toMetres(summary.meanMiningHeight).toFixed(2)} m` : '—'}
                     </td>
                     <td className="num">
                       {summary.meanHangingwallOverbreak !== null
-                        ? `${summary.meanHangingwallOverbreak.toFixed(2)} m`
+                        ? `${summary.meanHangingwallOverbreak} cm`
                         : '—'}
                     </td>
                   </tr>

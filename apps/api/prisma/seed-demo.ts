@@ -75,7 +75,6 @@ async function main() {
         shiftDate: now,
         shift: entry.shift,
         surveyReference: `PEG-${1200 + index * 17}`,
-        faceAdvance: 1.6 + index * 0.2,
         locationMethod: 'SURVEY_STATION',
         locationConfidence: 'HIGH',
         status: 'SUBMITTED',

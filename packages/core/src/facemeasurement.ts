@@ -19,19 +19,23 @@
  * and getting it backwards silently inverts every stope width, so it is
  * validated rather than assumed.
  *
- * ── A note on the station interval and the first station ──────────────
- * The standard and the sheets in circulation disagree twice, and this module
- * rules on neither. §9.8.iv specifies a 2 m interval; the sheets record at
- * 1 m. §9.8.ii places the first reading 1 m from the sidewall; the sheets
- * start at 0 and run to the far sidewall (Face Marking Sheet NS3: a 7.2 m
- * face, stations 0 to 7).
+ * ── Units ─────────────────────────────────────────────────────────────
+ * **Every offset in this module is in centimetres.** That is what the
+ * technician reads off the tape and what the Chief Geologist asked the
+ * application to hold, so it is what is stored: a reading converted on entry
+ * is a reading that can be converted wrongly. Metres appear only where a
+ * figure leaves geology for management, and the conversion happens there —
+ * see `toMetres`.
  *
- * Both are therefore inputs, both default to the standard, and both are
- * recoverable from any stored record — the interval is a field on it, and the
- * first station's distance is the first station's distance. Deviating from the
- * standard raises a warning, never an error: it is the mine's call, and the
- * application's job is to record which was used, not to refuse the practice
- * that is actually in the sheets.
+ * ── The station traverse ──────────────────────────────────────────────
+ * Fixed by the Chief Geologist, not configurable: stations are at **1 m**,
+ * the first is 1 m from the sidewall, **there is no station zero**, and the
+ * number of offsets is **face length − 1**. A 7.2 m face is therefore six
+ * offsets, at 1 through 6 m.
+ *
+ * This overrides §9.8.iv's two metre interval, which the mine does not work
+ * to. The rule is applied rather than offered, because a face measured at a
+ * different spacing from every other face cannot be compared with them.
  */
 
 import type { Confidence } from './types.js';
@@ -49,9 +53,9 @@ export interface FaceLimits {
   /** Reference code of the limit set, e.g. BORD or DECLINE. */
   code: string;
   label: string;
-  /** Maximum permitted BMSZ→hangingwall offset, in metres (positive). */
+  /** Maximum permitted BMSZ→hangingwall offset, in centimetres (positive). */
   hangingwall: number;
-  /** Minimum permitted BMSZ→footwall offset, in metres (negative). */
+  /** Minimum permitted BMSZ→footwall offset, in centimetres (negative). */
   footwall: number;
 }
 
@@ -62,15 +66,40 @@ export interface FaceLimits {
  * `face_limit_set` reference list, not authority.
  */
 export const DEFAULT_FACE_LIMITS: FaceLimits[] = [
-  { code: 'BORD', label: 'Bord / ledging decline', hangingwall: 0.45, footwall: -1.35 },
-  { code: 'DECLINE', label: 'Decline', hangingwall: 1.5, footwall: -1.0 },
+  { code: 'BORD', label: 'Bord / ledging decline', hangingwall: 45, footwall: -135 },
+  { code: 'DECLINE', label: 'Decline', hangingwall: 150, footwall: -100 },
 ];
 
-/** §9.8.iv specifies two metre stations. */
-export const STANDARD_STATION_INTERVAL_M = 2;
+/**
+ * The station traverse, fixed by the Chief Geologist.
+ *
+ * Not a default and not configurable: a face measured at a different spacing
+ * from every other face cannot be compared with them, and comparison across
+ * faces is the whole reason these readings are collected.
+ */
+export const STATION_INTERVAL_M = 1;
 
-/** §9.8.ii: the first reading is taken 1 m from the sidewall. */
-export const STANDARD_START_OFFSET_M = 1;
+/** The first reading is 1 m from the sidewall. There is no station zero. */
+export const STATION_START_OFFSET_M = 1;
+
+/**
+ * Stations that must be read on every face, in metres from the sidewall.
+ *
+ * A face is allowed to be part-measured while the technician is walking it,
+ * but it cannot be submitted without these two: they are the pair the mine
+ * compares faces on, and a face missing them is not comparable with any other.
+ * Only applied where the face is wide enough to have the station at all.
+ */
+export const MANDATORY_STATIONS_M = [2, 5];
+
+/** Centimetres to metres, for figures leaving geology for management. */
+export const toMetres = (cm: number): number => Math.round((cm / 100) * 1000) / 1000;
+
+/**
+ * Mining height above which a face is flagged to management, in centimetres.
+ * Configuration rather than authority: the mine sets its own.
+ */
+export const MINING_HEIGHT_FLAG_CM = 200;
 
 export type FaceMeasurementMethod = 'DISTOMETER' | 'TAPE_5M';
 
@@ -80,29 +109,37 @@ export type FaceTraverseDirection = 'DOWN_DIP_TO_UP_DIP' | 'UP_DIP_TO_DOWN_DIP';
 /* ── records ──────────────────────────────────────────────────────────── */
 
 export interface FaceStation {
-  /** Position along the face in metres, from the first station. */
+  /** Position along the face, in metres from the sidewall. */
   distance: number;
-  /** BMSZ → hangingwall, positive, metres. Null until measured. */
+  /** BMSZ → hangingwall, positive, centimetres. Null until measured. */
   hangingwall: number | null;
-  /** BMSZ → footwall, negative, metres. Null until measured. */
+  /** BMSZ → footwall, negative, centimetres. Null until measured. */
   footwall: number | null;
   /** Required when the station breaches a limit. */
   reason?: string | null;
   note?: string | null;
 }
 
+/**
+ * The design cut for the heading, in centimetres. Optional: it is not always
+ * issued, and a face is measured whether or not it was.
+ */
+export interface DesignCut {
+  hangingwall: number;
+  footwall: number;
+}
+
 export interface FaceMeasurement {
-  /** §9.8.i */
+  /** §9.8.i — peg to face, in metres. */
   distanceFromPeg: number | null;
-  blastNumber?: string | null;
-  advance?: number | null;
-  distanceToCapitalFpBorder?: number | null;
-  /** §9.8.vi — the face width of the bord. */
+  /** The face width, in metres. Sets how many offsets there are. */
   faceLength: number | null;
+  /** Always 1 m. Carried on the record so an old reading stays readable. */
   stationInterval: number;
   traverseDirection: FaceTraverseDirection;
   measurementMethod?: FaceMeasurementMethod | null;
   limits: FaceLimits;
+  designCut?: DesignCut | null;
   stations: FaceStation[];
   expectedGrade?: number | null;
   actualGrade?: number | null;
@@ -121,11 +158,16 @@ export interface StationAssessment {
   /** Footwall offset beyond the limit. */
   footwallBreach: boolean;
   breach: boolean;
-  /** How far past the limit, in metres. Zero when within limits. */
+  /** How far past the limit, in centimetres. Zero when within limits. */
   hangingwallOverbreak: number;
   footwallOverbreak: number;
-  /** Hangingwall minus footwall. The mined width at this station. */
-  stopeWidth: number | null;
+  /**
+   * Hangingwall minus footwall, in centimetres — the mining height at this
+   * station. The subtraction is what makes the sign convention matter: a
+   * footwall entered positive would shorten the height instead of adding to
+   * it, which is why a positive footwall is refused rather than corrected.
+   */
+  miningHeight: number | null;
   complete: boolean;
   reasonRequired: boolean;
   reasonGiven: boolean;
@@ -150,7 +192,7 @@ export function assessStation(station: FaceStation, index: number, limits: FaceL
     breach,
     hangingwallOverbreak: hangingwallBreach ? round2(hw! - limits.hangingwall) : 0,
     footwallOverbreak: footwallBreach ? round2(limits.footwall - fw!) : 0,
-    stopeWidth: complete ? round2(hw! - fw!) : null,
+    miningHeight: complete ? round2(hw! - fw!) : null,
     complete,
     reasonRequired: breach,
     reasonGiven: Boolean(station.reason && station.reason.trim().length > 0),
@@ -164,11 +206,16 @@ export interface FaceMeasurementSummary {
   hangingwallBreaches: number;
   footwallBreaches: number;
   breachingStations: number;
-  /** Mean over-break across breaching hangingwall stations only. */
+  /** Mean over-break across breaching hangingwall stations only, in cm. */
   meanHangingwallOverbreak: number | null;
-  meanStopeWidth: number | null;
-  minStopeWidth: number | null;
-  maxStopeWidth: number | null;
+  /** Means across every measured station, in centimetres. */
+  meanHangingwall: number | null;
+  meanFootwall: number | null;
+  meanMiningHeight: number | null;
+  minMiningHeight: number | null;
+  maxMiningHeight: number | null;
+  /** True when any station was mined higher than the flag height. */
+  exceedsFlagHeight: boolean;
   breachesWithoutReason: number;
   complete: boolean;
 }
@@ -176,7 +223,9 @@ export interface FaceMeasurementSummary {
 export function summariseFaceMeasurement(measurement: FaceMeasurement): FaceMeasurementSummary {
   const stations = measurement.stations.map((s, i) => assessStation(s, i, measurement.limits));
 
-  const widths = stations.map((s) => s.stopeWidth).filter((w): w is number => w !== null);
+  const heights = stations.map((s) => s.miningHeight).filter((h): h is number => h !== null);
+  const hangingwalls = stations.map((s) => s.hangingwall).filter((v): v is number => v !== null);
+  const footwalls = stations.map((s) => s.footwall).filter((v): v is number => v !== null);
   const hangingwallOverbreaks = stations.filter((s) => s.hangingwallBreach).map((s) => s.hangingwallOverbreak);
   const measured = stations.filter((s) => s.complete).length;
 
@@ -188,9 +237,12 @@ export function summariseFaceMeasurement(measurement: FaceMeasurement): FaceMeas
     footwallBreaches: stations.filter((s) => s.footwallBreach).length,
     breachingStations: stations.filter((s) => s.breach).length,
     meanHangingwallOverbreak: hangingwallOverbreaks.length ? round2(mean(hangingwallOverbreaks)) : null,
-    meanStopeWidth: widths.length ? round2(mean(widths)) : null,
-    minStopeWidth: widths.length ? round2(Math.min(...widths)) : null,
-    maxStopeWidth: widths.length ? round2(Math.max(...widths)) : null,
+    meanHangingwall: hangingwalls.length ? round2(mean(hangingwalls)) : null,
+    meanFootwall: footwalls.length ? round2(mean(footwalls)) : null,
+    meanMiningHeight: heights.length ? round2(mean(heights)) : null,
+    minMiningHeight: heights.length ? round2(Math.min(...heights)) : null,
+    maxMiningHeight: heights.length ? round2(Math.max(...heights)) : null,
+    exceedsFlagHeight: heights.some((h) => h > MINING_HEIGHT_FLAG_CM),
     breachesWithoutReason: stations.filter((s) => s.reasonRequired && !s.reasonGiven).length,
     complete: stations.length > 0 && measured === stations.length,
   };
@@ -235,7 +287,7 @@ export function validateFaceMeasurement(measurement: FaceMeasurement): FaceMeasu
   ) => issues.push({ field, severity, code, message, ...(station !== undefined ? { station } : {}) });
 
   if (measurement.stations.length === 0) {
-    add('stations', 'ERROR', 'face.no_stations', 'No measurement stations. Set the face length and interval to lay out the stations.');
+    add('stations', 'ERROR', 'face.no_stations', 'No measurement stations. Enter the face width to lay out the stations.');
   }
 
   if (summary.measured === 0 && measurement.stations.length > 0) {
@@ -256,25 +308,26 @@ export function validateFaceMeasurement(measurement: FaceMeasurement): FaceMeasu
     add('faceLength', 'ERROR', 'face.length_invalid', 'Face width must be greater than zero.');
   }
 
-  if (measurement.stationInterval <= 0) {
-    add('stationInterval', 'ERROR', 'face.interval_invalid', 'Station interval must be greater than zero.');
-  } else if (measurement.stationInterval !== STANDARD_STATION_INTERVAL_M) {
+  // The traverse is fixed, so a departure from it is an error rather than a
+  // warning: readings at another spacing cannot be compared with every other
+  // face, which is the only reason they are collected.
+  if (measurement.stationInterval !== STATION_INTERVAL_M) {
     add(
       'stationInterval',
-      'WARNING',
-      'face.interval_non_standard',
-      `Stations are at ${measurement.stationInterval} m. STD-201 §9.8.iv specifies ${STANDARD_STATION_INTERVAL_M} m. The interval used is recorded with the readings.`,
+      'ERROR',
+      'face.interval_invalid',
+      `Stations must be at ${STATION_INTERVAL_M} m. This measurement is at ${measurement.stationInterval} m.`,
     );
   }
 
   if (measurement.stations.length > 0) {
     const first = measurement.stations[0]!.distance;
-    if (Math.abs(first - STANDARD_START_OFFSET_M) > 1e-9) {
+    if (Math.abs(first - STATION_START_OFFSET_M) > 1e-9) {
       add(
         'stations',
-        'WARNING',
-        'face.start_non_standard',
-        `The first station is ${round2(first)} m from the sidewall. STD-201 §9.8.ii places it ${STANDARD_START_OFFSET_M} m. The distances used are recorded with the readings.`,
+        'ERROR',
+        'face.start_invalid',
+        `The first station is ${round2(first)} m from the sidewall; it must be ${STATION_START_OFFSET_M} m. There is no station zero.`,
       );
     }
   }
@@ -284,8 +337,21 @@ export function validateFaceMeasurement(measurement: FaceMeasurement): FaceMeasu
     const span = measurement.stations[measurement.stations.length - 1]!.distance - measurement.stations[0]!.distance;
     if (span > measurement.faceLength + 0.51) {
       add('stations', 'WARNING', 'face.span_exceeds_length', `The stations span ${round2(span)} m but the face is ${measurement.faceLength} m wide. Check the face width and the interval.`);
-    } else if (measurement.faceLength - span > measurement.stationInterval) {
+    } else if (measurement.faceLength - span > measurement.stationInterval + 1) {
       add('stations', 'WARNING', 'face.span_short', `The stations span ${round2(span)} m of a ${measurement.faceLength} m face. More than one interval is unmeasured.`);
+    }
+  }
+
+  for (const distance of MANDATORY_STATIONS_M) {
+    const station = summary.stations.find((st) => Math.abs(st.distance - distance) < 1e-9);
+    if (station && !station.complete) {
+      add(
+        'stations',
+        'ERROR',
+        'face.mandatory_station_missing',
+        `The ${distance} m station has not been read. Every face is compared on its ${MANDATORY_STATIONS_M.join(' m and ')} m offsets, so both are required.`,
+        station.index,
+      );
     }
   }
 
@@ -305,8 +371,8 @@ export function validateFaceMeasurement(measurement: FaceMeasurement): FaceMeasu
       add('reason', 'ERROR', 'face.breach_reason_required', `${capitalise(label)} is outside the mining-cut limits. Record why before submitting.`, station.index);
     }
 
-    if (station.stopeWidth !== null && station.stopeWidth <= 0) {
-      add('stopeWidth', 'ERROR', 'face.width_not_positive', `Stope width at ${label} is ${station.stopeWidth} m. Check the two readings — the hangingwall reading should be above the footwall reading.`, station.index);
+    if (station.miningHeight !== null && station.miningHeight <= 0) {
+      add('miningHeight', 'ERROR', 'face.height_not_positive', `Mining height at ${label} is ${station.miningHeight} cm. Check the two readings — the hangingwall reading should be above the footwall reading.`, station.index);
     }
 
     if (!station.complete && (station.hangingwall !== null || station.footwall !== null)) {
@@ -331,27 +397,28 @@ export function validateFaceMeasurement(measurement: FaceMeasurement): FaceMeasu
 /**
  * Lays out the stations for a face.
  *
- * Starts at `startOffset` from the sidewall — 1 m per §9.8.ii — and steps by
- * the interval to the far sidewall. The traverse stops at the face width: a
- * station beyond it would be measuring rock that was never in the cut.
+ * One rule, no arguments beyond the face width: the first station is 1 m from
+ * the sidewall, they run at 1 m, and there is no station zero. The count is
+ * **face length − 1**, so a 7.2 m face is six offsets at 1 through 6 m.
  *
- * It deliberately does **not** inset the far end as well. A completed sheet
- * runs to the last whole interval that fits (NS3: 0 to 7 across 7.2 m), and a
- * layout that could not reproduce a sheet already filled in by hand would be
- * telling the technician their own record is wrong.
+ * The face width is the only input because it is the only thing that varies.
+ * Every other face is measured this way, and a face measured differently
+ * cannot be set beside them.
  */
-export function layOutStations(
-  faceLength: number,
-  interval: number,
-  startOffset = STANDARD_START_OFFSET_M,
-): FaceStation[] {
-  if (faceLength <= 0 || interval <= 0 || startOffset < 0) return [];
+export function layOutStations(faceLength: number): FaceStation[] {
+  if (!Number.isFinite(faceLength) || faceLength <= 0) return [];
+
   const stations: FaceStation[] = [];
-  for (let d = startOffset; d <= faceLength + 1e-9; d += interval) {
+  const last = faceLength - STATION_START_OFFSET_M;
+  for (let d = STATION_START_OFFSET_M; d <= last + 1e-9; d += STATION_INTERVAL_M) {
     stations.push({ distance: round2(d), hangingwall: null, footwall: null });
   }
-  // A face narrower than the inset still gets its centre measured.
-  if (stations.length === 0) stations.push({ distance: round2(faceLength / 2), hangingwall: null, footwall: null });
+
+  // A face too narrow for the inset at both ends still gets one reading, at
+  // its centre. A face was mined; something has to be recorded about it.
+  if (stations.length === 0) {
+    stations.push({ distance: round2(faceLength / 2), hangingwall: null, footwall: null });
+  }
   return stations;
 }
 

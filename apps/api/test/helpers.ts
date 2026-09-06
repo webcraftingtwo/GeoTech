@@ -88,7 +88,12 @@ export function faceLogPayload(workplaceId: string, technicianId: string, id = l
     shiftDate: '2026-02-01T00:00:00.000Z',
     shift: 'MORNING',
     surveyReference: 'PEG-1255',
-    faceAdvance: 1.8,
+    channelId: 'CH-1255',
+    distanceToChannel: 4.2,
+    tarpClass: '2',
+    overseer: 'M. Ncube',
+    mineName: 'Unki Mines',
+    areaMadeSafe: true,
     status: 'SUBMITTED',
   };
 }
